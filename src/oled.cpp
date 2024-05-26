@@ -38,4 +38,51 @@ void oled_dispay_setup() {
   display.setCursor(0, 10);
 }
 
+void oled_print_ap_info(String ssid, IPAddress ip, IPAddress mask) {
+  oled_dispay_setup();
+  display.println("Please connect to esp32 wifi");
+  display.println();
+  display.printf("SSID: %s\n", ssid.c_str());
+  display.printf("IP: %s\n", ip.toString().c_str());
+  display.printf("MASK: %s\n", mask.toString().c_str());
+  oled_dispay();
+}
+
+void oled_print_connect_wifi_info(String ssid, IPAddress ip, int8_t rssi,
+                                  String macAddress) {
+  oled_dispay_setup();
+  display.println("Connect to wifi success!");
+  display.printf("SSID: %s\n", ssid.c_str());
+  display.printf("IP: %s\n", ip.toString().c_str());
+  display.printf("RSSI: %d dbm\n", rssi);
+  display.printf("MAC: %s\n", macAddress.c_str());
+  oled_dispay();
+  delay(5000);
+}
+
+void oled_print_mqtt_connecting() {
+  oled_dispay_setup();
+  display.println("Connecting to mqtt ...");
+  oled_dispay();
+}
+
+void oled_print_mqtt_reconnecting() {
+  oled_dispay_setup();
+  display.println("Reconnecting to mqtt ...");
+  oled_dispay();
+}
+
+void oled_print_mqtt_connect_success() {
+  oled_dispay_setup();
+  display.println("connect to mqtt suceess!");
+  oled_dispay();
+  delay(5000);
+}
+
+void oled_print_mqtt_connect_failed() {
+  oled_dispay_setup();
+  display.println("connect to mqtt failed! retry after 5 second ...");
+  oled_dispay();
+}
+
 void oled_dispay() { display.display(); }

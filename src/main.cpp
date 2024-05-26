@@ -5,8 +5,10 @@
 
 #include "dht11.h"
 #include "led.h"
+#include "mqtt.h"
 #include "oled.h"
 #include "photoresister.h"
+#include "server.h"
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <Adafruit_Sensor.h>
@@ -15,6 +17,10 @@
 #include <Wire.h>
 
 uint32_t delayMS;
+char *edge_id = "<YOUR EDGE ID>";
+char *mqtt_host = "<YOUR MQTT HOST>";
+char *mqtt_username = "<YOUR MQTT USER NAME>";
+char *mqtt_password = "<YOUR MQTT PASSWORD";
 
 void setup() {
   Serial.begin(115200);
@@ -37,10 +43,15 @@ void setup() {
 
   digitalWrite(LED_PIN, LOW);
   Serial.println("system init complete!");
+
+  server_init();
+  mqtt_connect(edge_id, mqtt_host, mqtt_username, mqtt_password);
 }
 
 void loop() {
   delay(delayMS);
+
+  mqtt_loop();
   float temperture = dht_read_temperture();
   float humidity = dht_read_humidity();
   bool is_dark = photoresister_is_dark();
@@ -65,4 +76,5 @@ void loop() {
   }
 
   Serial.printf("Temp: %.2f C, Hum: %.2f %\n", temperture, humidity);
+  mqtt_publish(temperture, humidity);
 }
