@@ -17,10 +17,10 @@
 #include <Wire.h>
 
 uint32_t delayMS;
-char *edge_id = "<YOUR EDGE ID>";
-char *mqtt_host = "<YOUR MQTT HOST>";
-char *mqtt_username = "<YOUR MQTT USER NAME>";
-char *mqtt_password = "<YOUR MQTT PASSWORD";
+char edge_id[] = "<YOUR EDGE ID>";
+char mqtt_host[] = "<YOUR MQTT HOST>";
+char mqtt_username[] = "<YOUR MQTT USER NAME>";
+char mqtt_password[] = "<YOUR MQTT PASSWORD";
 
 void setup() {
   Serial.begin(115200);
