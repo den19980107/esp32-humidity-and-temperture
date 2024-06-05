@@ -2106,7 +2106,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Display:Adafruit_SSD1306"
+		(property "Footprint" "SSD1306:128x64OLED"
 			(at 184.15 48.26 0)
 			(effects
 				(font
