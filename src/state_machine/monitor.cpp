@@ -24,7 +24,7 @@ void Monitor::update() {
 				this->state = MONITOR_IDLE;
 			}
 			break;
-		case MonitorState::MONTIOR_SHOW_SENSOR_DATA:
+		case MonitorState::MONITOR_SHOW_SENSOR_DATA:
 			this->prepareDisplay();
 			this->display.printf("Temp: %.2f %cC\n", this->sensorData.temperture, (char)247);
 			this->display.println();
@@ -67,7 +67,7 @@ void Monitor::handleSensorData(SensorData data) {
 		return;
 	}
 
-	this->state = MONTIOR_SHOW_SENSOR_DATA;
+	this->state = MONITOR_SHOW_SENSOR_DATA;
 	this->sensorData = data;
 }
 
