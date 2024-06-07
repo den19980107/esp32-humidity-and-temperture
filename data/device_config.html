@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta charset="UTF-8" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.3.0/flowbite.min.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="container mx-auto px-4 py-4">
+    <h1
+      class="mb-4 text-4xl font-extrabold leading-none tracking-tight text-gray-900 md:text-5xl lg:text-6xl"
+    >
+      Connect to the cloud
+    </h1>
+    <form
+      method="POST"
+      action="/connectCloud"
+      enctype="multipart/form-data"
+      style="display: flex; flex-direction: column; margin-bottom: 1rem"
+    >
+      <div class="mb-6">
+        <label for="ssid" class="block mb-2 text-sm font-medium text-gray-900"
+          >Edge Id</label
+        >
+        <input
+          type="text"
+          id="edgeId"
+          name="edgeId"
+          class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+          required
+          placeholder="insert your edge id"
+        />
+      </div>
+      <div class="mb-6">
+        <label
+          for="mqttHost"
+          class="block mb-2 text-sm font-medium text-gray-900"
+          >MQTT Host</label
+        >
+        <input
+          type="text"
+          id="mqttHost"
+          name="mqttHost"
+          class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+          required
+          placeholder="insert your mqtt host"
+        />
+      </div>
+      <div class="mb-6">
+        <label
+          for="mqttUserName"
+          class="block mb-2 text-sm font-medium text-gray-900"
+          >MQTT Username</label
+        >
+        <input
+          type="text"
+          id="mqttUserName"
+          name="mqttUserName"
+          class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+          required
+          placeholder="insert your mqtt username"
+        />
+      </div>
+      <div class="mb-6">
+        <label
+          for="mqttPassword"
+          class="block mb-2 text-sm font-medium text-gray-900"
+          >MQTT Password</label
+        >
+        <input
+          type="text"
+          id="mqttPassword"
+          name="mqttPassword"
+          class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+          required
+          placeholder="insert your mqtt password"
+        />
+      </div>
+      <button
+        type="submit"
+        class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center"
+      >
+        Connect
+      </button>
+    </form>
+  </body>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.3.0/flowbite.min.js"></script>
+</html>

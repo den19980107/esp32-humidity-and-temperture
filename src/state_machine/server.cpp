@@ -66,7 +66,7 @@ void WebServer::update() {
 			break;
 		case WAIT_WIFI_CONNECTED:
 			if (WiFi.status() == WL_CONNECTED) {
-				Serial.printf("[wifi connected] ip: %s\n", WiFi.localIP());
+				Serial.printf("[wifi connected] ip: %s\n", WiFi.localIP().toString().c_str());
 				this->state = WAIT_DEVICE_CONFIG;
 			}
 
@@ -77,7 +77,6 @@ void WebServer::update() {
 			}
 			break;
 		case WAIT_DEVICE_CONFIG:
-			this->deviceConfig = new DeviceConfig("<EDGE ID>", "<MQTT HOST>", "<MQTT USERNAME>", "<MQTT PASSWORD>");
 			if (this->deviceConfig != nullptr) {
 				this->state = CONNECT_MQTT;
 			}
@@ -88,6 +87,7 @@ void WebServer::update() {
 				return;
 			}
 
+			Serial.println("[connect mqtt failed]");
 			this->deviceConfig = nullptr;
 			this->state = WAIT_DEVICE_CONFIG;
 			break;
@@ -99,6 +99,7 @@ void WebServer::update() {
 			break;
 		case WAIT:
 			if (now - this->lastCheckTime > CHECK_WIFI_DEVICE_CONFIG_INTERVAL) {
+				this->lastCheckTime = now;
 				this->state = CHECK_DEVICE_CONFIG_CHANGE;
 			}
 			break;
@@ -117,7 +118,7 @@ void WebServer::publish(SensorData data) {
 	sprintf(msg, "{\"temp\":%.2f, \"humi\":%.2f, \"photoresister\":%d}", data.temperture, data.humidity,
 			data.photoresisterValue);
 
-	Serial.printf("[publish] topic: %s, patload: %s", topic, msg);
+	Serial.printf("[publish] topic: %s, patload: %s\n", topic, msg);
 
 	this->pubSubClient.publish(topic, msg);
 }
@@ -159,8 +160,39 @@ void WebServer::registRouter() {
 			}
 		}
 
+		std::string change_wifi = readFile(SPIFFS, "/change_wifi.html");
+		request->send(200, "text/html", String(change_wifi.c_str()));
+
 		this->wifiConfig = new WifiConfig(ssid, username, password);
-		request->redirect("/");
+	});
+
+	this->server.on("/deviceConfig", HTTP_GET, [=](AsyncWebServerRequest *request) {
+		std::string device_config_html = readFile(SPIFFS, "/device_config.html");
+		request->send(200, "text/html", String(device_config_html.c_str()));
+	});
+
+	this->server.on("/connectCloud", HTTP_POST, [=](AsyncWebServerRequest *request) {
+		int paramsNr = request->params();
+		const char *edgeId, *mqttHost, *mqttUserName, *mqttPassword;
+
+		for (int i = 0; i < paramsNr; i++) {
+			AsyncWebParameter *p = request->getParam(i);
+
+			if (p->name() == "edgeId") {
+				edgeId = p->value().c_str();
+			} else if (p->name() == "mqttHost") {
+				mqttHost = p->value().c_str();
+			} else if (p->name() == "mqttUserName") {
+				mqttUserName = p->value().c_str();
+			} else if (p->name() == "mqttPassword") {
+				mqttPassword = p->value().c_str();
+			} else {
+				continue;
+			}
+		}
+
+		this->deviceConfig = new DeviceConfig(edgeId, mqttHost, mqttUserName, mqttPassword);
+		request->send(200, "text/html", "finish");
 	});
 
 	server.begin();
@@ -217,6 +249,8 @@ std::vector<ScannedWifi> WebServer::scanWifi() {
 }
 
 bool WebServer::connectMQTT() {
+	Serial.printf("connect to %s using edgeId: %s, username: %s, password: %s\n", this->deviceConfig->mqttHost,
+				  this->deviceConfig->edgeId, this->deviceConfig->mqttUserName, this->deviceConfig->mqttPassword);
 	this->pubSubClient.setServer(this->deviceConfig->mqttHost, 1883);
 	return this->pubSubClient.connect(this->deviceConfig->edgeId, this->deviceConfig->mqttUserName,
 									  this->deviceConfig->mqttPassword);

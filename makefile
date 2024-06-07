@@ -5,6 +5,7 @@ all:
 	@echo "Available targets:"
 	@echo "  make build     - Build the project"
 	@echo "  make upload    - Upload firmware to a connected board"
+	@echo "  make uploadfs  - Upload file system to a connected board"
 	@echo "  make monitor   - Monitor serial output from a connected board"
 	@echo "  make clean     - Clean project (remove compiled files)"
 
@@ -13,6 +14,9 @@ build:
 
 upload:
 	pio run -t upload
+
+uploadfs:
+	pio run --target uploadfs
 
 monitor:
 	pio device monitor
