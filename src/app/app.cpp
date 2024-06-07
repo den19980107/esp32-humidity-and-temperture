@@ -1,5 +1,7 @@
 #include "app.h"
 
+#include <SPIFFS.h>
+
 #include "define.h"
 #include "state_machine/monitor.h"
 
@@ -14,6 +16,11 @@ App::App()
 };
 
 void App::run() {
+	if (!SPIFFS.begin(true)) {
+		Serial.println("An error has occurred while mounting SPIFFS");
+		return;
+	}
+
 	while (true) {
 		this->sensorSM.update();
 		this->monitorSM.update();

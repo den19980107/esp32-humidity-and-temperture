@@ -1,6 +1,7 @@
 #include "server.h"
 
 #include <AsyncTCP.h>
+#include <SPIFFS.h>
 #include <WiFi.h>
 
 #include <cstdio>
@@ -9,34 +10,7 @@
 
 #include "define.h"
 #include "esp_wpa2.h"
-
-std::string index_html PROGMEM = R"rawliteral(
-<!DOCTYPE HTML>
-<html lang="en">
-<head>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta charset="UTF-8">
-</head>
-<body>
-  <p><h1>Connect to Wifi</h1></p>
-  <form method="POST" action="/connectWifi" enctype="multipart/form-data" style="display:flex; flex-direction:column; margin-bottom: 1rem;">
-    <label>WIFI SSID:</label>
-    <select name="ssid" id="ssid-select">
-      <option value=""> Please choose a wifi </option>
-      {{options}}
-    </select>
-
-    <label>WIFI USERNAME:</label>
-    <input type="text" name="username"/>
-
-    <label>WIFI PASSWORD:</label>
-    <input type="password" name="password"/>
-
-    <input type="submit" name="connect" value="connect" title="connect">
-  </form>
-</body>
-</html>
-)rawliteral";
+#include "util/file.h"
 
 void replaceAll(std::string &str, const std::string &from, const std::string &to) {
 	size_t start_pos = 0;
@@ -92,10 +66,12 @@ void WebServer::update() {
 			break;
 		case WAIT_WIFI_CONNECTED:
 			if (WiFi.status() == WL_CONNECTED) {
+				Serial.printf("[wifi connected] ip: %s\n", WiFi.localIP());
 				this->state = WAIT_DEVICE_CONFIG;
 			}
 
 			if (now - this->lastConnectWifiTime > WIFI_CONNECT_TIMEOUT) {
+				Serial.println("[connect wifi time out]");
 				this->wifiConfig = nullptr;
 				this->state = WAIT_WIFI_CONFIG;
 			}
@@ -157,6 +133,8 @@ void WebServer::registRouter() {
 							this->scannedWifis[i].ssid);
 			optionsHtml += buff;
 		}
+
+		std::string index_html = readFile(SPIFFS, "/index.html");
 
 		replaceAll(index_html, anchor, optionsHtml);
 
