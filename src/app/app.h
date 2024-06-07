@@ -4,6 +4,7 @@
 #include "state_machine/monitor.h"
 #include "state_machine/night_light.h"
 #include "state_machine/sensor.h"
+#include "state_machine/server.h"
 
 class App {
    public:
@@ -14,6 +15,7 @@ class App {
 	Monitor monitorSM;
 	Sensor sensorSM;
 	NightLight nightLightSM;
+	WebServer serverSM;
 	void sensorCallBackFn(SensorData data);
 	SensorData *previousSensorData;
 };

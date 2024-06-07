@@ -7,6 +7,7 @@ App::App()
 	: monitorSM(SCREEN_WIDTH, SCREEN_HEIGHT),
 	  sensorSM(DHT_PIN, DHT_TYPE, PHOTORESISTER_PIN, nullptr),
 	  nightLightSM(LED_PIN),
+	  serverSM(),
 	  previousSensorData(nullptr) {
 	Sensor::SensorCallBackFunction fn = [this](SensorData data) { this->sensorCallBackFn(data); };
 	this->sensorSM.setCallback(fn);
@@ -17,12 +18,15 @@ void App::run() {
 		this->sensorSM.update();
 		this->monitorSM.update();
 		this->nightLightSM.update();
+		this->serverSM.update();
 	}
 }
 
 void App::sensorCallBackFn(SensorData data) {
 	Serial.printf("[get sensor data] temp: %.2f humi: %.2f, photoresister: %d\n", data.temperture, data.humidity,
 				  data.photoresisterValue);
+
+	this->serverSM.publish(data);
 
 	// handle first read
 	if (this->previousSensorData == nullptr) {
