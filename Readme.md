@@ -65,6 +65,10 @@ back:
    make monitor
    ```
 
+### Wifi and device config UI
+
+![combined_image](https://i.imgur.com/BxlIvDF.jpeg)
+
 ### State Machine Diagram
 
 this project is design using a pattern called `finite state machine`, which is commonly used in the embedded system.
