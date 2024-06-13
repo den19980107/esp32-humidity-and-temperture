@@ -8,6 +8,10 @@ the functionality for this project:
 2. detect the light intensity of the room and open the night light led if room is too dark
 3. upload the sensor data that esp32 readed and upload to the cloud using mqtt
 
+## Demo
+
+https://www.youtube.com/shorts/sdgEsP3yd80
+
 ## Hardware
 
 ### Project Photo
