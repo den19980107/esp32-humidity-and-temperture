@@ -18,6 +18,7 @@ class App {
 	WebServer serverSM;
 	void sensorCallBackFn(SensorData data);
 	SensorData *previousSensorData;
+	unsigned long lastUploadTime;
 };
 
 #endif

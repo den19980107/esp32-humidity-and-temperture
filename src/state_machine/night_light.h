@@ -7,6 +7,7 @@ enum NightLightState {
 	NIGHT_LIGHT_ON,
 	NIGHT_LIGHT_WIAT,
 	NIGHT_LIGHT_OFF,
+	NIGHT_LIGHT_IDLE,
 };
 
 class NightLight {
@@ -18,9 +19,12 @@ class NightLight {
 
    private:
 	NightLightState state;
+	NightLightState previousState;
 	unsigned long lastTurnOnTime;
 	int turnOnDuration;
 	uint8_t ledPin;
+	void logStateChange();
+	const char* stateToString(NightLightState state);
 };
 
 #endif

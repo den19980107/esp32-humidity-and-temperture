@@ -23,13 +23,15 @@ class Monitor {
 
    private:
 	void prepareDisplay();
-
 	Adafruit_SSD1306 display;
 	MonitorState state;
+	MonitorState previousState;
 	SensorData sensorData;
 	bool ledOn;
 	unsigned long lastBlockTime;
 	int blockDurationMs;
+	void logStateChange();
+	const char* stateToString(MonitorState state);
 };
 
 #endif

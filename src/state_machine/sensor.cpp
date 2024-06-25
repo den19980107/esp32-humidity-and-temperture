@@ -13,6 +13,7 @@ Sensor::Sensor(const int dht_pin, const uint8_t dht_type, const int photoresiste
 }
 
 void Sensor::update() {
+	// this->logStateChange();
 	unsigned long now = millis();
 
 	switch (this->state) {
@@ -53,4 +54,25 @@ SensorData Sensor::readSensor() {
 	sensorData.photoresisterValue = analogRead(this->photoresisterPin);
 
 	return sensorData;
+}
+
+const char *Sensor::stateToString(SensorState state) {
+	switch (state) {
+		case SENSOR_IDLE:
+			return "SENSOR_IDLE";
+		case SENSOR_READ:
+			return "SENSOR_READ";
+		case SENSOR_WAIT:
+			return "SENSOR_WAIT";
+		default:
+			return "UNKNOW";
+	}
+}
+
+void Sensor::logStateChange() {
+	if (this->state != this->previousState) {
+		Serial.printf("[Sensor] change from %s to %s\n", this->stateToString(this->previousState),
+					  this->stateToString(this->state));
+	}
+	this->previousState = this->state;
 }

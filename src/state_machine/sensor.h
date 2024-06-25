@@ -31,10 +31,13 @@ class Sensor {
    private:
 	unsigned long lastReadingTime;
 	SensorState state;
+	SensorState previousState;
 	SensorData readSensor();
 	SensorCallBackFunction onSensorDataChange;
 	DHT_Unified dht;
 	int photoresisterPin;
+	void logStateChange();
+	const char* stateToString(SensorState state);
 };
 
 #endif

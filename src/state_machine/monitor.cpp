@@ -14,6 +14,7 @@ Monitor::Monitor(const int width, const int height)
 }
 
 void Monitor::update() {
+	this->logStateChange();
 	unsigned long now = millis();
 
 	switch (this->state) {
@@ -82,4 +83,27 @@ void Monitor::prepareDisplay() {
 	this->display.setTextSize(1);
 	this->display.setTextColor(WHITE);
 	this->display.setCursor(0, 10);
+}
+
+const char* Monitor::stateToString(MonitorState state) {
+	switch (state) {
+		case MonitorState::MONITOR_IDLE:
+			return "MONITOR_IDLE";
+		case MonitorState::MONITOR_BLOCK:
+			return "MONITOR_BLOCK";
+		case MonitorState::MONITOR_SHOW_SENSOR_DATA:
+			return "MONITOR_SHOW_SENSOR_DATA";
+		case MonitorState::MONITOR_SHOW_LED_STATUS:
+			return "MONITOR_SHOW_LED_STATUS";
+		default:
+			return "UNKNOW";
+	}
+}
+
+void Monitor::logStateChange() {
+	if (this->state != this->previousState) {
+		Serial.printf("[Monitor] change from %s to %s\n", this->stateToString(this->previousState),
+					  this->stateToString(this->state));
+	}
+	this->previousState = this->state;
 }

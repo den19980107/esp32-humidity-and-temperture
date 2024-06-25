@@ -256,7 +256,7 @@ bool WebServer::connectMQTT() {
 									  this->deviceConfig->mqttPassword);
 }
 
-const char *WebServer::serverStateToString(ServerState state) {
+const char *WebServer::stateToString(ServerState state) {
 	switch (state) {
 		case START_AP:
 			return "START_AP";
@@ -289,8 +289,8 @@ const char *WebServer::serverStateToString(ServerState state) {
 
 void WebServer::logStateChange() {
 	if (this->state != this->previousState) {
-		Serial.printf("change from %s to %s\n", this->serverStateToString(this->previousState),
-					  this->serverStateToString(this->state));
+		Serial.printf("[WebServer] change from %s to %s\n", this->stateToString(this->previousState),
+					  this->stateToString(this->state));
 	}
 	this->previousState = this->state;
 }

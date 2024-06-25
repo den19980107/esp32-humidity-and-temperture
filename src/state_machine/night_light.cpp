@@ -17,12 +17,13 @@ void NightLight::turnOff() {
 }
 
 void NightLight::update() {
+	// this->logStateChange();
 	unsigned long now = millis();
 
 	switch (this->state) {
 		case NIGHT_LIGHT_OFF:
 			digitalWrite(this->ledPin, LOW);
-			this->state = NIGHT_LIGHT_WIAT;
+			this->state = NIGHT_LIGHT_IDLE;
 			break;
 		case NIGHT_LIGHT_ON:
 			digitalWrite(this->ledPin, HIGH);
@@ -34,5 +35,30 @@ void NightLight::update() {
 				this->state = NIGHT_LIGHT_OFF;
 			}
 			break;
+		case NIGHT_LIGHT_IDLE:
+			break;
 	}
+}
+
+const char *NightLight::stateToString(NightLightState state) {
+	switch (state) {
+		case NIGHT_LIGHT_OFF:
+			return "NIGHT_LIGHT_OFF";
+		case NIGHT_LIGHT_ON:
+			return "NIGHT_LIGHT_ON";
+		case NIGHT_LIGHT_WIAT:
+			return "NIGHT_LIGHT_WIAT";
+		case NIGHT_LIGHT_IDLE:
+			return "NIGHT_LIGHT_IDLE";
+		default:
+			return "UNKNOW";
+	}
+}
+
+void NightLight::logStateChange() {
+	if (this->state != this->previousState) {
+		Serial.printf("[NightLight] change from %s to %s\n", this->stateToString(this->previousState),
+					  this->stateToString(this->state));
+	}
+	this->previousState = this->state;
 }

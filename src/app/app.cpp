@@ -30,10 +30,12 @@ void App::run() {
 }
 
 void App::sensorCallBackFn(SensorData data) {
-	Serial.printf("[get sensor data] temp: %.2f humi: %.2f, photoresister: %d\n", data.temperture, data.humidity,
-				  data.photoresisterValue);
+	unsigned long now = millis();
 
-	this->serverSM.publish(data);
+	if (now - this->lastUploadTime > UPLOAD_FRQUENCY) {
+		this->serverSM.publish(data);
+		this->lastUploadTime = now;
+	}
 
 	// handle first read
 	if (this->previousSensorData == nullptr) {
@@ -52,12 +54,12 @@ void App::sensorCallBackFn(SensorData data) {
 
 	if (previousLedOn != currentLedOn) {
 		this->monitorSM.handleLedStatusChange(currentLedOn, NIGHT_LIGHT_BLOCK_DISPLAY_DURATION);
-	}
 
-	if (currentLedOn) {
-		this->nightLightSM.turnOnForDuration(NIGHT_LIGHT_ON_DURATION);
-	} else {
-		this->nightLightSM.turnOff();
+		if (currentLedOn) {
+			this->nightLightSM.turnOnForDuration(NIGHT_LIGHT_ON_DURATION);
+		} else {
+			this->nightLightSM.turnOff();
+		}
 	}
 
 	*this->previousSensorData = data;

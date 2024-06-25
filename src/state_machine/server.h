@@ -115,7 +115,7 @@ class WebServer {
 	std::vector<ScannedWifi> scanWifi();
 	bool connectMQTT();
 	void logStateChange();
-	const char* serverStateToString(ServerState state);
+	const char* stateToString(ServerState state);
 	unsigned long lastCheckTime;
 	unsigned long lastConnectWifiTime;
 };
