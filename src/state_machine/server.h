@@ -18,6 +18,7 @@ enum ServerState {
 	WAIT_WIFI_CONNECTED,
 	WAIT_DEVICE_CONFIG,
 	CONNECT_MQTT,
+	PUBLISH_HOME_ASSISTANT_DISCOVERY,
 	CHECK_DEVICE_CONFIG_CHANGE,
 	CHECK_WIFI_CONFIG_CHANGE,
 	WAIT
@@ -115,9 +116,39 @@ class WebServer {
 	std::vector<ScannedWifi> scanWifi();
 	bool connectMQTT();
 	void logStateChange();
+	void publishHomeAssistantDiscovery();
 	const char* stateToString(ServerState state);
 	unsigned long lastCheckTime;
 	unsigned long lastConnectWifiTime;
+};
+
+struct HADeviceConfig {
+	const char* name;
+	const char* identifier;
+	const char* toJson() {
+		char* payload = new char[128];
+		sprintf(payload, "{\"name\":\"%s\", \"identifiers\":\"%s\"}", this->name, this->identifier);
+		return payload;
+	};
+};
+
+struct HASensorConfig {
+	const char* name;
+	const char* unique_id;
+	const char* state_topic;
+	const char* unit_of_measurement;
+	const char* value_template;
+	HADeviceConfig* device;
+	const char* toJson() {
+		char* payload = new char[512];
+		sprintf(payload,
+				"{\"name\":\"%s\", \"unique_id\":\"%s\", \"state_topic\": \"%s\", \"unit_of_measurement\": "
+				"\"%s\",\"value_template\": \"%s\", \"device\": %s}",
+				this->name, this->unique_id, this->state_topic, this->unit_of_measurement, this->value_template,
+				this->device->toJson());
+
+		return payload;
+	};
 };
 
 #endif

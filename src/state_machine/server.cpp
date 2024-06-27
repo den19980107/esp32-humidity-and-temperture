@@ -83,13 +83,17 @@ void WebServer::update() {
 			break;
 		case CONNECT_MQTT:
 			if (this->connectMQTT()) {
-				this->state = CHECK_DEVICE_CONFIG_CHANGE;
+				this->state = PUBLISH_HOME_ASSISTANT_DISCOVERY;
 				return;
 			}
 
 			Serial.println("[connect mqtt failed]");
 			this->deviceConfig = nullptr;
 			this->state = WAIT_DEVICE_CONFIG;
+			break;
+		case PUBLISH_HOME_ASSISTANT_DISCOVERY:
+			this->publishHomeAssistantDiscovery();
+			this->state = CHECK_DEVICE_CONFIG_CHANGE;
 			break;
 		case CHECK_DEVICE_CONFIG_CHANGE:
 			this->state = CHECK_WIFI_CONFIG_CHANGE;
@@ -112,13 +116,13 @@ void WebServer::publish(SensorData data) {
 	}
 
 	char topic[32];
-	sprintf(topic, "Advantech.%s.data", this->deviceConfig->edgeId);
+	sprintf(topic, "Advantech/%s/data", this->deviceConfig->edgeId);
 
 	char msg[256];
 	sprintf(msg, "{\"temp\":%.2f, \"humi\":%.2f, \"photoresister\":%d}", data.temperture, data.humidity,
 			data.photoresisterValue);
 
-	Serial.printf("[publish] topic: %s, patload: %s\n", topic, msg);
+	Serial.printf("[publish] topic: %s, payload: %s\n", topic, msg);
 
 	this->pubSubClient.publish(topic, msg);
 }
@@ -252,6 +256,7 @@ bool WebServer::connectMQTT() {
 	Serial.printf("connect to %s using edgeId: %s, username: %s, password: %s\n", this->deviceConfig->mqttHost,
 				  this->deviceConfig->edgeId, this->deviceConfig->mqttUserName, this->deviceConfig->mqttPassword);
 	this->pubSubClient.setServer(this->deviceConfig->mqttHost, 1883);
+	this->pubSubClient.setBufferSize(512);
 	return this->pubSubClient.connect(this->deviceConfig->edgeId, this->deviceConfig->mqttUserName,
 									  this->deviceConfig->mqttPassword);
 }
@@ -276,6 +281,8 @@ const char *WebServer::stateToString(ServerState state) {
 			return "WAIT_DEVICE_CONFIG";
 		case CONNECT_MQTT:
 			return "CONNECT_MQTT";
+		case PUBLISH_HOME_ASSISTANT_DISCOVERY:
+			return "PUBLISH_HOME_ASSISTANT_DISCOVERY";
 		case CHECK_DEVICE_CONFIG_CHANGE:
 			return "CHECK_DEVICE_CONFIG_CHANGE";
 		case CHECK_WIFI_CONFIG_CHANGE:
@@ -293,4 +300,50 @@ void WebServer::logStateChange() {
 					  this->stateToString(this->state));
 	}
 	this->previousState = this->state;
+}
+
+void WebServer::publishHomeAssistantDiscovery() {
+	char sensorStateTopic[32];
+	sprintf(sensorStateTopic, "Advantech/%s/data", this->deviceConfig->edgeId);
+
+	String edgeId = this->deviceConfig->edgeId;
+	String tempertureId = edgeId + "_temperture";
+	String humidityId = edgeId + "_humidity";
+	String photoresisterId = edgeId + "_photoresister";
+
+	HADeviceConfig device = HADeviceConfig{this->deviceConfig->edgeId, this->deviceConfig->edgeId};
+	HASensorConfig tempSensor = {.name = "temperture",
+								 .unique_id = tempertureId.c_str(),
+								 .state_topic = sensorStateTopic,
+								 .unit_of_measurement = "°C",
+								 .value_template = "{{ value_json.temp }}",
+								 .device = &device};
+	HASensorConfig humiditySensor = {.name = "humidity",
+									 .unique_id = humidityId.c_str(),
+									 .state_topic = sensorStateTopic,
+									 .unit_of_measurement = "%",
+									 .value_template = "{{ value_json.humi }}",
+									 .device = &device};
+	HASensorConfig photoresisterSensor = {.name = "photoresister",
+										  .unique_id = photoresisterId.c_str(),
+										  .state_topic = sensorStateTopic,
+										  .unit_of_measurement = "",
+										  .value_template = "{{ value_json.photoresister }}",
+										  .device = &device};
+
+	char tempertureTopic[100];
+	sprintf(tempertureTopic, HA_CONFIG_TEMPERTURE_TOPIC, this->deviceConfig->edgeId);
+
+	char humidityTopic[100];
+	sprintf(humidityTopic, HA_CONFIG_HUMIDITY_TOPIC, this->deviceConfig->edgeId);
+
+	char photoresisterTopic[100];
+	sprintf(photoresisterTopic, HA_CONFIG_PHOTORESISTER_TOPIC, this->deviceConfig->edgeId);
+
+	Serial.printf("[publish] topic: %s, payload: %s\n", tempertureTopic, tempSensor.toJson());
+	this->pubSubClient.publish(tempertureTopic, tempSensor.toJson());
+	Serial.printf("[publish] topic: %s, payload: %s\n", humidityTopic, humiditySensor.toJson());
+	this->pubSubClient.publish(humidityTopic, humiditySensor.toJson());
+	Serial.printf("[publish] topic: %s, payload: %s\n", photoresisterTopic, photoresisterSensor.toJson());
+	this->pubSubClient.publish(photoresisterTopic, photoresisterSensor.toJson());
 }
