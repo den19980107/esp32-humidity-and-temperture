@@ -388,7 +388,7 @@ void WebServer::publishHomeAssistantDiscovery() {
 }
 
 void WebServer::mqttCallBack(char *topic, byte *payload, unsigned int length) {
-	Serial.printf("Message arrived, topic: %s\n", topic);
+	Serial.printf("Message arrived, topic: %s, payload: ", topic);
 	for (unsigned int i = 0; i < length; i++) {
 		Serial.print((char)payload[i]);
 	}
@@ -398,14 +398,13 @@ void WebServer::mqttCallBack(char *topic, byte *payload, unsigned int length) {
 	memcpy(message, payload, length);
 	message[length] = '\0';
 
-	if (strcmp(topic, "Advantech/24DCC3A736EC/data")) {
+	String ledTopic = "Advantech/" + String(this->deviceConfig->edgeId) + "/led";
+	if (strcmp(topic, ledTopic.c_str()) == 0) {
 		if (strcmp(message, "on") == 0) {
-			Serial.printf("on!\n");
 			this->ledCallBackFunction(true);
 		}
 
 		if (strcmp(message, "off") == 0) {
-			Serial.printf("off\n");
 			this->ledCallBackFunction(false);
 		}
 	}
