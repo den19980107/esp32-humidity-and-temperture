@@ -36,19 +36,17 @@ enum SensorState {
 
 class Sensor {
    public:
-	using SensorCallBackFunction = std::function<void(SensorData)>;
-
 	Sensor(const int dht_pin, const uint8_t dht_type, const int photoresister_pin, const int led_pin,
-		   SensorCallBackFunction fn);
+		   std::function<void(SensorData)> fn);
 	void update();
-	void setCallback(SensorCallBackFunction callback);
+	void setCallback(std::function<void(SensorData)> callback);
 
    private:
 	unsigned long lastReadingTime;
 	SensorState state;
 	SensorState previousState;
 	SensorData readSensor();
-	SensorCallBackFunction onSensorDataChange;
+	std::function<void(SensorData)> onSensorDataChange;
 	DHT_Unified dht;
 	int photoresisterPin;
 	int ledPin;

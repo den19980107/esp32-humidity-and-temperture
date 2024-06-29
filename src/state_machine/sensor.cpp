@@ -3,7 +3,7 @@
 #include "define.h"
 
 Sensor::Sensor(const int dht_pin, const uint8_t dht_type, const int photoresister_pin, const int led_pin,
-			   SensorCallBackFunction fn)
+			   std::function<void(SensorData)> fn)
 	: onSensorDataChange(fn),
 	  dht(dht_pin, dht_type),
 	  photoresisterPin(photoresister_pin),
@@ -35,7 +35,7 @@ void Sensor::update() {
 	}
 }
 
-void Sensor::setCallback(Sensor::SensorCallBackFunction callback) {
+void Sensor::setCallback(std::function<void(SensorData)> callback) {
 	this->onSensorDataChange = callback;
 }
 

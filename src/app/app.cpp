@@ -11,11 +11,8 @@ App::App()
 	  nightLightSM(LED_PIN),
 	  serverSM(),
 	  previousSensorData(nullptr) {
-	Sensor::SensorCallBackFunction sensorCallBackFn = [this](SensorData data) { this->sensorCallBackFn(data); };
-	this->sensorSM.setCallback(sensorCallBackFn);
-
-	auto ledCallBackFn = [this](bool ledOn) { this->ledCallBackFn(ledOn); };
-	this->serverSM.setCallback(ledCallBackFn);
+	this->sensorSM.setCallback([this](SensorData data) { this->sensorCallBackFn(data); });
+	this->serverSM.setCallback([this](bool ledOn) { this->ledCallBackFn(ledOn); });
 };
 
 void App::run() {

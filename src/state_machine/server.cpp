@@ -254,12 +254,9 @@ bool WebServer::connectMQTT() {
 	Serial.printf("connect to %s using edgeId: %s, username: %s, password: %s\n", this->deviceConfig->mqttHost,
 				  this->deviceConfig->edgeId, this->deviceConfig->mqttUserName, this->deviceConfig->mqttPassword);
 
-	auto callback = [this](char *topic, byte *payload, unsigned int length) {
-		this->mqttCallBack(topic, payload, length);
-	};
-
 	this->pubSubClient.setServer(this->deviceConfig->mqttHost, 1883);
-	this->pubSubClient.setCallback(callback);
+	this->pubSubClient.setCallback(
+		[this](char *topic, byte *payload, unsigned int length) { this->mqttCallBack(topic, payload, length); });
 	this->pubSubClient.setBufferSize(512);
 	if (!this->pubSubClient.connect(this->deviceConfig->edgeId, this->deviceConfig->mqttUserName,
 									this->deviceConfig->mqttPassword)) {
