@@ -17,6 +17,7 @@ class App {
 	NightLight nightLightSM;
 	WebServer serverSM;
 	void sensorCallBackFn(SensorData data);
+	void ledCallBackFn(bool ledOn);
 	SensorData *previousSensorData;
 	unsigned long lastUploadTime;
 };

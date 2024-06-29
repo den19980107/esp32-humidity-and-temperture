@@ -1,6 +1,8 @@
 #ifndef SERVER_H
 #define SERVER_H
 
+#include <ArduinoJson.h>
+
 #include <vector>
 
 #include "ESPAsyncWebServer.h"
@@ -99,6 +101,7 @@ class WebServer {
 	WebServer();
 	void update();
 	void publish(SensorData data);
+	void setCallback(std::function<void(bool)> callback);
 
    private:
 	ServerState state;
@@ -117,18 +120,19 @@ class WebServer {
 	bool connectMQTT();
 	void logStateChange();
 	void publishHomeAssistantDiscovery();
+	void mqttCallBack(char* topic, byte* payload, unsigned int length);
 	const char* stateToString(ServerState state);
 	unsigned long lastCheckTime;
 	unsigned long lastConnectWifiTime;
+	std::function<void(bool)> ledCallBackFunction;
 };
 
 struct HADeviceConfig {
 	const char* name;
-	const char* identifier;
-	const char* toJson() {
-		char* payload = new char[128];
-		sprintf(payload, "{\"name\":\"%s\", \"identifiers\":\"%s\"}", this->name, this->identifier);
-		return payload;
+	const char* identifiers;
+	void toJson(JsonDocument& doc) {
+		doc["name"] = this->name;
+		doc["identifiers"] = this->identifiers;
 	};
 };
 
@@ -139,15 +143,42 @@ struct HASensorConfig {
 	const char* unit_of_measurement;
 	const char* value_template;
 	HADeviceConfig* device;
-	const char* toJson() {
-		char* payload = new char[512];
-		sprintf(payload,
-				"{\"name\":\"%s\", \"unique_id\":\"%s\", \"state_topic\": \"%s\", \"unit_of_measurement\": "
-				"\"%s\",\"value_template\": \"%s\", \"device\": %s}",
-				this->name, this->unique_id, this->state_topic, this->unit_of_measurement, this->value_template,
-				this->device->toJson());
+	void toJson(JsonDocument& doc) {
+		doc["name"] = this->name;
+		doc["unique_id"] = this->unique_id;
+		doc["state_topic"] = this->state_topic;
+		doc["unit_of_measurement"] = this->unit_of_measurement;
+		doc["value_template"] = this->value_template;
 
-		return payload;
+		JsonDocument deviceJson;
+		this->device->toJson(deviceJson);
+		doc["device"] = deviceJson;
+	};
+};
+
+struct HALightConfig {
+	const char* name;
+	const char* unique_id;
+	const char* command_topic;
+	const char* state_topic;
+	const char* state_value_template;
+	const char* payload_on;
+	const char* payload_off;
+	bool optimistic;
+	HADeviceConfig* device;
+	void toJson(JsonDocument& doc) {
+		doc["name"] = this->name;
+		doc["unique_id"] = this->unique_id;
+		doc["command_topic"] = this->command_topic;
+		doc["state_topic"] = this->state_topic;
+		doc["state_value_template"] = this->state_value_template;
+		doc["payload_on"] = this->payload_on;
+		doc["payload_off"] = this->payload_off;
+		doc["optimistic"] = this->optimistic;
+
+		JsonDocument deviceJson;
+		this->device->toJson(deviceJson);
+		doc["device"] = deviceJson;
 	};
 };
 

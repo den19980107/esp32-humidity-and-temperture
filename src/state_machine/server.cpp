@@ -6,11 +6,13 @@
 
 #include <cstdio>
 #include <cstring>
+#include <functional>
 #include <vector>
 
 #include "define.h"
 #include "esp_wpa2.h"
 #include "util/file.h"
+#include "util/json.h"
 
 void replaceAll(std::string &str, const std::string &from, const std::string &to) {
 	size_t start_pos = 0;
@@ -32,6 +34,7 @@ WebServer::WebServer()
 }
 
 void WebServer::update() {
+	this->pubSubClient.loop();
 	this->logStateChange();
 	unsigned long now = millis();
 	switch (this->state) {
@@ -118,13 +121,8 @@ void WebServer::publish(SensorData data) {
 	char topic[32];
 	sprintf(topic, "Advantech/%s/data", this->deviceConfig->edgeId);
 
-	char msg[256];
-	sprintf(msg, "{\"temp\":%.2f, \"humi\":%.2f, \"photoresister\":%d}", data.temperture, data.humidity,
-			data.photoresisterValue);
-
-	Serial.printf("[publish] topic: %s, payload: %s\n", topic, msg);
-
-	this->pubSubClient.publish(topic, msg);
+	Serial.printf("[publish] topic: %s, payload: %s\n", topic, data.toJson());
+	this->pubSubClient.publish(topic, data.toJson());
 }
 
 void WebServer::registRouter() {
@@ -255,10 +253,28 @@ std::vector<ScannedWifi> WebServer::scanWifi() {
 bool WebServer::connectMQTT() {
 	Serial.printf("connect to %s using edgeId: %s, username: %s, password: %s\n", this->deviceConfig->mqttHost,
 				  this->deviceConfig->edgeId, this->deviceConfig->mqttUserName, this->deviceConfig->mqttPassword);
+
+	auto callback = [this](char *topic, byte *payload, unsigned int length) {
+		this->mqttCallBack(topic, payload, length);
+	};
+
 	this->pubSubClient.setServer(this->deviceConfig->mqttHost, 1883);
+	this->pubSubClient.setCallback(callback);
 	this->pubSubClient.setBufferSize(512);
-	return this->pubSubClient.connect(this->deviceConfig->edgeId, this->deviceConfig->mqttUserName,
-									  this->deviceConfig->mqttPassword);
+	if (!this->pubSubClient.connect(this->deviceConfig->edgeId, this->deviceConfig->mqttUserName,
+									this->deviceConfig->mqttPassword)) {
+		Serial.println("connect to mqtt failed!");
+		return false;
+	};
+
+	char ledCommandTopic[32];
+	sprintf(ledCommandTopic, "Advantech/%s/led", this->deviceConfig->edgeId);
+	Serial.printf("subscribe topic: %s\n", ledCommandTopic);
+	if (!this->pubSubClient.subscribe(ledCommandTopic)) {
+		Serial.printf("subscribe topic: %s failed!\n", ledCommandTopic);
+	}
+
+	return true;
 }
 
 const char *WebServer::stateToString(ServerState state) {
@@ -306,10 +322,14 @@ void WebServer::publishHomeAssistantDiscovery() {
 	char sensorStateTopic[32];
 	sprintf(sensorStateTopic, "Advantech/%s/data", this->deviceConfig->edgeId);
 
+	char ledCommandTopic[32];
+	sprintf(ledCommandTopic, "Advantech/%s/led", this->deviceConfig->edgeId);
+
 	String edgeId = this->deviceConfig->edgeId;
 	String tempertureId = edgeId + "_temperture";
 	String humidityId = edgeId + "_humidity";
 	String photoresisterId = edgeId + "_photoresister";
+	String ledId = edgeId + "_led";
 
 	HADeviceConfig device = HADeviceConfig{this->deviceConfig->edgeId, this->deviceConfig->edgeId};
 	HASensorConfig tempSensor = {.name = "temperture",
@@ -330,6 +350,15 @@ void WebServer::publishHomeAssistantDiscovery() {
 										  .unit_of_measurement = "",
 										  .value_template = "{{ value_json.photoresister }}",
 										  .device = &device};
+	HALightConfig ledLight = {.name = "led",
+							  .unique_id = ledId.c_str(),
+							  .command_topic = ledCommandTopic,
+							  .state_topic = sensorStateTopic,
+							  .state_value_template = "{{ value_json.ledState}}",
+							  .payload_on = "on",
+							  .payload_off = "off",
+							  .optimistic = true,
+							  .device = &device};
 
 	char tempertureTopic[100];
 	sprintf(tempertureTopic, HA_CONFIG_TEMPERTURE_TOPIC, this->deviceConfig->edgeId);
@@ -340,10 +369,51 @@ void WebServer::publishHomeAssistantDiscovery() {
 	char photoresisterTopic[100];
 	sprintf(photoresisterTopic, HA_CONFIG_PHOTORESISTER_TOPIC, this->deviceConfig->edgeId);
 
-	Serial.printf("[publish] topic: %s, payload: %s\n", tempertureTopic, tempSensor.toJson());
-	this->pubSubClient.publish(tempertureTopic, tempSensor.toJson());
-	Serial.printf("[publish] topic: %s, payload: %s\n", humidityTopic, humiditySensor.toJson());
-	this->pubSubClient.publish(humidityTopic, humiditySensor.toJson());
-	Serial.printf("[publish] topic: %s, payload: %s\n", photoresisterTopic, photoresisterSensor.toJson());
-	this->pubSubClient.publish(photoresisterTopic, photoresisterSensor.toJson());
+	char ledTopic[100];
+	sprintf(ledTopic, HA_CONFIG_LED_TOPIC, this->deviceConfig->edgeId);
+
+	JsonDocument tempSensorJson;
+	tempSensor.toJson(tempSensorJson);
+
+	JsonDocument humiditySensorJson;
+	humiditySensor.toJson(humiditySensorJson);
+
+	JsonDocument photoresisterSensorJson;
+	photoresisterSensor.toJson(photoresisterSensorJson);
+
+	JsonDocument ledLightJson;
+	ledLight.toJson(ledLightJson);
+
+	this->pubSubClient.publish(tempertureTopic, jsonToByte(tempSensorJson));
+	this->pubSubClient.publish(humidityTopic, jsonToByte(humiditySensorJson));
+	this->pubSubClient.publish(photoresisterTopic, jsonToByte(photoresisterSensorJson));
+	this->pubSubClient.publish(ledTopic, jsonToByte(ledLightJson));
+}
+
+void WebServer::mqttCallBack(char *topic, byte *payload, unsigned int length) {
+	Serial.printf("Message arrived, topic: %s\n", topic);
+	for (unsigned int i = 0; i < length; i++) {
+		Serial.print((char)payload[i]);
+	}
+	Serial.println();
+
+	char message[length + 1];
+	memcpy(message, payload, length);
+	message[length] = '\0';
+
+	if (strcmp(topic, "Advantech/24DCC3A736EC/data")) {
+		if (strcmp(message, "on") == 0) {
+			Serial.printf("on!\n");
+			this->ledCallBackFunction(true);
+		}
+
+		if (strcmp(message, "off") == 0) {
+			Serial.printf("off\n");
+			this->ledCallBackFunction(false);
+		}
+	}
+}
+
+void WebServer::setCallback(std::function<void(bool)> callback) {
+	this->ledCallBackFunction = callback;
 }

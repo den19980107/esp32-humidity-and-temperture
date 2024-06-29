@@ -7,12 +7,15 @@
 
 App::App()
 	: monitorSM(SCREEN_WIDTH, SCREEN_HEIGHT),
-	  sensorSM(DHT_PIN, DHT_TYPE, PHOTORESISTER_PIN, nullptr),
+	  sensorSM(DHT_PIN, DHT_TYPE, PHOTORESISTER_PIN, LED_PIN, nullptr),
 	  nightLightSM(LED_PIN),
 	  serverSM(),
 	  previousSensorData(nullptr) {
-	Sensor::SensorCallBackFunction fn = [this](SensorData data) { this->sensorCallBackFn(data); };
-	this->sensorSM.setCallback(fn);
+	Sensor::SensorCallBackFunction sensorCallBackFn = [this](SensorData data) { this->sensorCallBackFn(data); };
+	this->sensorSM.setCallback(sensorCallBackFn);
+
+	auto ledCallBackFn = [this](bool ledOn) { this->ledCallBackFn(ledOn); };
+	this->serverSM.setCallback(ledCallBackFn);
 };
 
 void App::run() {
@@ -63,4 +66,12 @@ void App::sensorCallBackFn(SensorData data) {
 	}
 
 	*this->previousSensorData = data;
+}
+
+void App::ledCallBackFn(bool ledOn) {
+	if (ledOn) {
+		this->nightLightSM.turnOnForDuration(NIGHT_LIGHT_ON_DURATION);
+	} else {
+		this->nightLightSM.turnOff();
+	}
 }

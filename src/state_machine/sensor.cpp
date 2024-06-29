@@ -2,10 +2,12 @@
 
 #include "define.h"
 
-Sensor::Sensor(const int dht_pin, const uint8_t dht_type, const int photoresister_pin, SensorCallBackFunction fn)
+Sensor::Sensor(const int dht_pin, const uint8_t dht_type, const int photoresister_pin, const int led_pin,
+			   SensorCallBackFunction fn)
 	: onSensorDataChange(fn),
 	  dht(dht_pin, dht_type),
 	  photoresisterPin(photoresister_pin),
+	  ledPin(led_pin),
 	  state(SENSOR_WAIT),
 	  lastReadingTime(0) {
 	this->dht.begin();
@@ -52,6 +54,7 @@ SensorData Sensor::readSensor() {
 	}
 
 	sensorData.photoresisterValue = analogRead(this->photoresisterPin);
+	sensorData.ledState = digitalRead(this->ledPin) == HIGH ? "on" : "off";
 
 	return sensorData;
 }
