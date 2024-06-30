@@ -208,6 +208,8 @@ void WebServer::startAp() {
 
 void WebServer::connectWifi() {
 	WiFi.disconnect();
+	WiFi.softAPdisconnect(true);
+	WiFi.mode(WIFI_STA);
 
 	if (this->wifiConfig->username == nullptr || this->wifiConfig->username[0] == '\0') {
 		Serial.printf("connect to %s with passwrod: %s\n", this->wifiConfig->ssid, this->wifiConfig->password);
@@ -334,18 +336,21 @@ void WebServer::publishHomeAssistantDiscovery() {
 								 .state_topic = sensorStateTopic,
 								 .unit_of_measurement = "°C",
 								 .value_template = "{{ value_json.temp }}",
+								 .device_class = "temperature",
 								 .device = &device};
 	HASensorConfig humiditySensor = {.name = "humidity",
 									 .unique_id = humidityId.c_str(),
 									 .state_topic = sensorStateTopic,
 									 .unit_of_measurement = "%",
 									 .value_template = "{{ value_json.humi }}",
+									 .device_class = "humidity",
 									 .device = &device};
 	HASensorConfig photoresisterSensor = {.name = "photoresister",
 										  .unique_id = photoresisterId.c_str(),
 										  .state_topic = sensorStateTopic,
-										  .unit_of_measurement = "",
+										  .unit_of_measurement = "lx",
 										  .value_template = "{{ value_json.photoresister }}",
+										  .device_class = "illuminance",
 										  .device = &device};
 	HALightConfig ledLight = {.name = "led",
 							  .unique_id = ledId.c_str(),

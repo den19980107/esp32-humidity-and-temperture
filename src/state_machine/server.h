@@ -142,6 +142,7 @@ struct HASensorConfig {
 	const char* state_topic;
 	const char* unit_of_measurement;
 	const char* value_template;
+	const char* device_class;
 	HADeviceConfig* device;
 	void toJson(JsonDocument& doc) {
 		doc["name"] = this->name;
@@ -149,6 +150,7 @@ struct HASensorConfig {
 		doc["state_topic"] = this->state_topic;
 		doc["unit_of_measurement"] = this->unit_of_measurement;
 		doc["value_template"] = this->value_template;
+		doc["device_class"] = this->device_class;
 
 		JsonDocument deviceJson;
 		this->device->toJson(deviceJson);
