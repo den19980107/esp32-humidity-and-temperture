@@ -207,7 +207,6 @@ void WebServer::startAp() {
 }
 
 void WebServer::connectWifi() {
-	WiFi.disconnect();
 	WiFi.softAPdisconnect(true);
 	WiFi.mode(WIFI_STA);
 
