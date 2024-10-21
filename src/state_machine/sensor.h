@@ -39,6 +39,7 @@ class Sensor {
 	Sensor(const int dht_pin, const uint8_t dht_type, const int photoresister_pin, const int led_pin,
 		   std::function<void(SensorData)> fn);
 	void update();
+	bool isIdle();
 	void setCallback(std::function<void(SensorData)> callback);
 
    private:

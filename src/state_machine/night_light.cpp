@@ -40,6 +40,10 @@ void NightLight::update() {
 	}
 }
 
+bool NightLight::isIdle() {
+	return this->state == NightLightState::NIGHT_LIGHT_IDLE;
+}
+
 const char *NightLight::stateToString(NightLightState state) {
 	switch (state) {
 		case NIGHT_LIGHT_OFF:

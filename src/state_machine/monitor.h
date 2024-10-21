@@ -20,6 +20,7 @@ class Monitor {
 	void handleSensorData(SensorData data);
 	void handleLedStatusChange(bool ledOn, int blockDurationMs);
 	void update();
+	bool isIdle();
 
    private:
 	void prepareDisplay();

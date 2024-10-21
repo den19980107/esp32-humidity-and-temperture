@@ -102,6 +102,7 @@ class WebServer {
 	void update();
 	void publish(SensorData data);
 	void setCallback(std::function<void(bool)> callback);
+	bool isIdle();
 
    private:
 	ServerState state;

@@ -16,6 +16,7 @@ class NightLight {
 	void turnOnForDuration(int ms);
 	void turnOff();
 	void update();
+	bool isIdle();
 
    private:
 	NightLightState state;
