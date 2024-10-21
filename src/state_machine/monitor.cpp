@@ -63,6 +63,10 @@ void Monitor::update() {
 	}
 }
 
+bool Monitor::isIdle() {
+	return this->state == MonitorState::MONITOR_IDLE;
+}
+
 void Monitor::handleSensorData(SensorData data) {
 	if (this->state == MONITOR_BLOCK) {
 		return;

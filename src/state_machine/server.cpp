@@ -113,6 +113,10 @@ void WebServer::update() {
 	}
 }
 
+bool WebServer::isIdle() {
+	return this->state == WAIT;
+}
+
 void WebServer::publish(SensorData data) {
 	if (this->deviceConfig == nullptr) {
 		return;
@@ -121,8 +125,8 @@ void WebServer::publish(SensorData data) {
 	char topic[32];
 	sprintf(topic, "Advantech/%s/data", this->deviceConfig->edgeId);
 
-	Serial.printf("[publish] topic: %s, payload: %s\n", topic, data.toJson());
-	this->pubSubClient.publish(topic, data.toJson());
+	bool result = this->pubSubClient.publish(topic, data.toJson());
+	Serial.printf("[publish %s] topic: %s, payload: %s\n", result ? "success" : "failed", topic, data.toJson());
 }
 
 void WebServer::registRouter() {

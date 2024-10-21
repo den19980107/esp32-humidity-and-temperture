@@ -35,6 +35,10 @@ void Sensor::update() {
 	}
 }
 
+bool Sensor::isIdle() {
+	return this->state == SensorState::SENSOR_IDLE;
+}
+
 void Sensor::setCallback(std::function<void(SensorData)> callback) {
 	this->onSensorDataChange = callback;
 }
