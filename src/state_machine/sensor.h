@@ -13,6 +13,8 @@ struct SensorData {
 	float temperture;
 	float humidity;
 	int photoresisterValue;
+	uint32_t freeMemory;
+	uint32_t lowestMemory;
 	const char* ledState;
 	const char* toJson() {
 		JsonDocument doc;
@@ -20,6 +22,8 @@ struct SensorData {
 		doc["humi"] = this->humidity;
 		doc["photoresister"] = this->photoresisterValue;
 		doc["ledState"] = this->ledState;
+		doc["freeMemory"] = this->freeMemory;
+		doc["lowestMemory"] = this->lowestMemory;
 
 		size_t payloadSize = measureJson(doc) + 1;
 		char* payload = new char[payloadSize];

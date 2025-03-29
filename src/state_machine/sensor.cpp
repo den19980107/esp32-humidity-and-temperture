@@ -1,6 +1,7 @@
 #include "sensor.h"
 
 #include "define.h"
+#include "esp_system.h"
 
 Sensor::Sensor(const int dht_pin, const uint8_t dht_type, const int photoresister_pin, const int led_pin,
 			   std::function<void(SensorData)> fn)
@@ -59,6 +60,9 @@ SensorData Sensor::readSensor() {
 
 	sensorData.photoresisterValue = analogRead(this->photoresisterPin);
 	sensorData.ledState = digitalRead(this->ledPin) == HIGH ? "on" : "off";
+
+	sensorData.freeMemory = esp_get_free_heap_size();
+	sensorData.lowestMemory = esp_get_minimum_free_heap_size();
 
 	return sensorData;
 }

@@ -348,6 +348,8 @@ void WebServer::publishHomeAssistantDiscovery() {
 	String tempertureId = edgeId + "_temperture";
 	String humidityId = edgeId + "_humidity";
 	String photoresisterId = edgeId + "_photoresister";
+	String freeMemoryId = edgeId + "_free_memory";
+	String lowestMemoryId = edgeId + "_lowest_memory";
 	String ledId = edgeId + "_led";
 
 	HADeviceConfig device = HADeviceConfig{this->deviceConfig->edgeId, this->deviceConfig->edgeId};
@@ -372,6 +374,18 @@ void WebServer::publishHomeAssistantDiscovery() {
 										  .value_template = "{{ value_json.photoresister }}",
 										  .device_class = "illuminance",
 										  .device = &device};
+	HASensorConfig freeMemorySensor = {.name = "free_memory",
+									   .unique_id = freeMemoryId.c_str(),
+									   .state_topic = sensorStateTopic,
+									   .unit_of_measurement = "bytes",
+									   .value_template = "{{ value_json.freeMemory}}",
+									   .device = &device};
+	HASensorConfig lowestMemorySensor = {.name = "lowest_memory",
+										 .unique_id = lowestMemoryId.c_str(),
+										 .state_topic = sensorStateTopic,
+										 .unit_of_measurement = "bytes",
+										 .value_template = "{{ value_json.lowestMemory}}",
+										 .device = &device};
 	HALightConfig ledLight = {.name = "led",
 							  .unique_id = ledId.c_str(),
 							  .command_topic = ledCommandTopic,
@@ -391,6 +405,12 @@ void WebServer::publishHomeAssistantDiscovery() {
 	char photoresisterTopic[100];
 	sprintf(photoresisterTopic, HA_CONFIG_PHOTORESISTER_TOPIC, this->deviceConfig->edgeId);
 
+	char freeMemoryTopic[100];
+	sprintf(freeMemoryTopic, HA_CONFIG_FREE_MEMORY_TOPIC, this->deviceConfig->edgeId);
+
+	char lowestMemoryTopic[100];
+	sprintf(lowestMemoryTopic, HA_CONFIG_LOWEST_MEMORY_TOPIC, this->deviceConfig->edgeId);
+
 	char ledTopic[100];
 	sprintf(ledTopic, HA_CONFIG_LED_TOPIC, this->deviceConfig->edgeId);
 
@@ -403,12 +423,20 @@ void WebServer::publishHomeAssistantDiscovery() {
 	JsonDocument photoresisterSensorJson;
 	photoresisterSensor.toJson(photoresisterSensorJson);
 
+	JsonDocument freeMemorySensorJson;
+	freeMemorySensor.toJson(freeMemorySensorJson);
+
+	JsonDocument lowestMemorySensorJson;
+	lowestMemorySensor.toJson(lowestMemorySensorJson);
+
 	JsonDocument ledLightJson;
 	ledLight.toJson(ledLightJson);
 
 	this->pubSubClient.publish(tempertureTopic, jsonToByte(tempSensorJson));
 	this->pubSubClient.publish(humidityTopic, jsonToByte(humiditySensorJson));
 	this->pubSubClient.publish(photoresisterTopic, jsonToByte(photoresisterSensorJson));
+	this->pubSubClient.publish(freeMemoryTopic, jsonToByte(freeMemorySensorJson));
+	this->pubSubClient.publish(lowestMemoryTopic, jsonToByte(lowestMemorySensorJson));
 	this->pubSubClient.publish(ledTopic, jsonToByte(ledLightJson));
 }
 

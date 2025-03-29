@@ -25,6 +25,8 @@
 #define HA_CONFIG_TEMPERTURE_TOPIC "homeassistant/sensor/%s/temperture/config"
 #define HA_CONFIG_HUMIDITY_TOPIC "homeassistant/sensor/%s/humidity/config"
 #define HA_CONFIG_PHOTORESISTER_TOPIC "homeassistant/sensor/%s/photoresister/config"
+#define HA_CONFIG_FREE_MEMORY_TOPIC "homeassistant/sensor/%s/freeMemory/config"
+#define HA_CONFIG_LOWEST_MEMORY_TOPIC "homeassistant/sensor/%s/lowestMemory/config"
 #define HA_CONFIG_LED_TOPIC "homeassistant/light/%s/led/config"
 
 #endif
