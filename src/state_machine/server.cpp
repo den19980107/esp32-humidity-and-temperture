@@ -75,7 +75,12 @@ void WebServer::update() {
 
 			if (now - this->lastConnectWifiTime > WIFI_CONNECT_TIMEOUT) {
 				Serial.println("[connect wifi time out]");
-				this->wifiConfig = nullptr;
+
+				if (this->wifiConfig != nullptr) {
+					delete this->wifiConfig;
+					this->wifiConfig = nullptr;
+				}
+
 				this->state = WAIT_WIFI_CONFIG;
 			}
 			break;
@@ -91,7 +96,11 @@ void WebServer::update() {
 			}
 
 			Serial.println("[connect mqtt failed]");
-			this->deviceConfig = nullptr;
+
+			if (this->deviceConfig != nullptr) {
+				delete this->deviceConfig;
+				this->deviceConfig = nullptr;
+			}
 			this->state = WAIT_DEVICE_CONFIG;
 			break;
 		case PUBLISH_HOME_ASSISTANT_DISCOVERY:
@@ -125,8 +134,10 @@ void WebServer::publish(SensorData data) {
 	char topic[32];
 	sprintf(topic, "Advantech/%s/data", this->deviceConfig->edgeId);
 
-	bool result = this->pubSubClient.publish(topic, data.toJson());
-	Serial.printf("[publish %s] topic: %s, payload: %s\n", result ? "success" : "failed", topic, data.toJson());
+	const char *json = data.toJson();
+	bool result = this->pubSubClient.publish(topic, json);
+	Serial.printf("[publish %s] topic: %s, payload: %s\n", result ? "success" : "failed", topic, json);
+	delete json;
 }
 
 void WebServer::registRouter() {
@@ -169,6 +180,9 @@ void WebServer::registRouter() {
 		std::string change_wifi = readFile(SPIFFS, "/change_wifi.html");
 		request->send(200, "text/html", String(change_wifi.c_str()));
 
+		if (this->wifiConfig != nullptr) {
+			delete this->wifiConfig;
+		}
 		this->wifiConfig = new WifiConfig(ssid, username, password);
 	});
 
@@ -197,6 +211,9 @@ void WebServer::registRouter() {
 			}
 		}
 
+		if (this->deviceConfig != nullptr) {
+			delete this->deviceConfig;
+		}
 		this->deviceConfig = new DeviceConfig(edgeId, mqttHost, mqttUserName, mqttPassword);
 		request->send(200, "text/html", "finish");
 	});
@@ -243,9 +260,9 @@ std::vector<ScannedWifi> WebServer::scanWifi() {
 	}
 
 	for (int i = 0; i < n; ++i) {
-		char *buf = new char[WiFi.SSID(i).length() + 1];
-		std::strcpy(buf, WiFi.SSID(i).c_str());
-		wifis.push_back(ScannedWifi(buf, WiFi.encryptionType(i) == WIFI_AUTH_OPEN,
+		// Convert WiFi SSID from String to std::string
+		std::string ssid = WiFi.SSID(i).c_str();
+		wifis.push_back(ScannedWifi(ssid.c_str(), WiFi.encryptionType(i) == WIFI_AUTH_OPEN,
 									WiFi.encryptionType(i) == WIFI_AUTH_WPA2_ENTERPRISE));
 	}
 

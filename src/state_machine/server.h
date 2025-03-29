@@ -87,13 +87,19 @@ struct ScannedWifi {
 	bool encrypted;	  // require password
 	bool enterprise;  // require username and password
 
+	// Default constructor
+	ScannedWifi() : ssid(nullptr), encrypted(false), enterprise(false) {
+	}
+
+	// Constructor with parameters
 	ScannedWifi(const char* ssid, const bool encrypted, const bool enterprise)
 		: ssid(strdup(ssid)), encrypted(encrypted), enterprise(enterprise) {
 	}
 
-	// ~ScannedWifi() {
-	// 	free(ssid);
-	// }
+	// Destructor to free allocated memory for ssid
+	~ScannedWifi() {
+		free(ssid);
+	}
 };
 
 class WebServer {
