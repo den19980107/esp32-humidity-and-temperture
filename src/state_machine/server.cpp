@@ -135,9 +135,14 @@ void WebServer::publish(SensorData data) {
 	sprintf(topic, "Advantech/%s/data", this->deviceConfig->edgeId);
 
 	const char *json = data.toJson();
-	bool result = this->pubSubClient.publish(topic, json);
-	Serial.printf("[publish %s] topic: %s, payload: %s\n", result ? "success" : "failed", topic, json);
+	bool success = this->pubSubClient.publish(topic, json);
+	Serial.printf("[publish %s] topic: %s, payload: %s\n", success ? "success" : "failed", topic, json);
 	delete json;
+
+	if (!success) {
+		Serial.printf("try to reconnect to wifi ...");
+		this->state = CONNECT_WIFI;
+	}
 }
 
 void WebServer::registRouter() {
