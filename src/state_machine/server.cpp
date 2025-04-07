@@ -137,7 +137,7 @@ void WebServer::publish(SensorData data) {
 	const char *json = data.toJson();
 	bool success = this->pubSubClient.publish(topic, json);
 	Serial.printf("[publish %s] topic: %s, payload: %s\n", success ? "success" : "failed", topic, json);
-	delete json;
+	delete[] json;
 
 	if (!success) {
 		Serial.printf("try to reconnect to wifi ...");
@@ -233,14 +233,16 @@ void WebServer::startAp() {
 }
 
 void WebServer::connectWifi() {
-	WiFi.softAPdisconnect(true);
-	WiFi.mode(WIFI_STA);
+	WiFi.disconnect(true);	// Disconnect and clear Wi-Fi state
+	WiFi.mode(WIFI_OFF);	// Turn off Wi-Fi completely
+	delay(100);				// Small delay to ensure cleanup
+	WiFi.mode(WIFI_STA);	// Re-enable STA mode
 
 	if (this->wifiConfig->username == nullptr || this->wifiConfig->username[0] == '\0') {
-		Serial.printf("connect to %s with passwrod: %s\n", this->wifiConfig->ssid, this->wifiConfig->password);
+		Serial.printf("connect to %s with password: %s\n", this->wifiConfig->ssid, this->wifiConfig->password);
 		WiFi.begin(this->wifiConfig->ssid, this->wifiConfig->password);
 	} else {
-		Serial.printf("connect to %s with username: %s and passwrod: %s\n", this->wifiConfig->ssid,
+		Serial.printf("connect to %s with username: %s and password: %s\n", this->wifiConfig->ssid,
 					  this->wifiConfig->username, this->wifiConfig->password);
 		WiFi.begin(this->wifiConfig->ssid);
 		WiFi.setHostname("ESP32");
@@ -336,8 +338,8 @@ const char *WebServer::stateToString(ServerState state) {
 
 void WebServer::logStateChange() {
 	if (this->state != this->previousState) {
-		Serial.printf("[WebServer] change from %s to %s\n", this->stateToString(this->previousState),
-					  this->stateToString(this->state));
+		Serial.printf("[WebServer] change from %s to %s, free heap: %d bytes\n",
+					  this->stateToString(this->previousState), this->stateToString(this->state), ESP.getFreeHeap());
 	}
 	this->previousState = this->state;
 }
