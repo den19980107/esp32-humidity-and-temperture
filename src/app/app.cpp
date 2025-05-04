@@ -54,7 +54,8 @@ void App::sensorCallBackFn(SensorData data) {
 	}
 
 	if (this->previousSensorData->humidity != data.humidity ||
-		this->previousSensorData->temperture != data.temperture) {
+		this->previousSensorData->temperture != data.temperture ||
+		this->previousSensorData->photoresisterValue != data.photoresisterValue) {
 		this->monitorSM.handleSensorData(data);
 	}
 
