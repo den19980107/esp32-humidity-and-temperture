@@ -30,11 +30,10 @@ void Monitor::update() {
 			break;
 		case MonitorState::MONITOR_SHOW_SENSOR_DATA:
 			this->prepareDisplay();
-			this->display.printf("Temp: %.2f %cC\n", this->sensorData.temperture, (char)247);
+			this->display.printf(" %.1f%cC\n", this->sensorData.temperture, (char)247);
 			this->display.println();
-			this->display.printf("Humi: %.2f %s\n", this->sensorData.humidity, "%");
-			this->display.println();
-			this->display.printf("PR: %.d\n", this->sensorData.photoresisterValue);
+			this->display.printf(" %.1f%s\n", this->sensorData.humidity, "%");
+			this->drawVerticalBar(this->sensorData.photoresisterValue);
 			this->display.display();
 			this->lastBlockTime = now;
 			this->state = MONITOR_IDLE;
@@ -87,7 +86,7 @@ void Monitor::handleLedStatusChange(bool ledOn, int blockDurationMs) {
 
 void Monitor::prepareDisplay() {
 	this->display.clearDisplay();
-	this->display.setTextSize(1);
+	this->display.setTextSize(2);
 	this->display.setTextColor(WHITE);
 	this->display.setCursor(0, 10);
 }
@@ -113,4 +112,15 @@ void Monitor::logStateChange() {
 					  this->stateToString(this->state));
 	}
 	this->previousState = this->state;
+}
+
+void Monitor::drawVerticalBar(uint16_t value) {
+	float ratio = value / 4096.0;
+	int barHeight = SCREEN_HEIGHT * ratio;
+	int barWidth = 8;
+	int x = SCREEN_WIDTH - barWidth;
+	int y = SCREEN_HEIGHT - barHeight;
+
+	// Draw the vertical bar
+	this->display.fillRect(x, y, barWidth, barHeight, SSD1306_WHITE);
 }
