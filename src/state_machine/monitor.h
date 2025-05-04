@@ -19,6 +19,7 @@ class Monitor {
 	Monitor(const int width, const int height);
 	void handleSensorData(SensorData data);
 	void handleLedStatusChange(bool ledOn, int blockDurationMs);
+	void drawVerticalBar(uint16_t value);
 	void update();
 	bool isIdle();
 
