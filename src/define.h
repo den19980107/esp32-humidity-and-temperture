@@ -9,12 +9,14 @@
 
 #define SCREEN_WIDTH 128  // OLED display width, in pixels
 #define SCREEN_HEIGHT 64  // OLED display height, in pixels
+#define SDA_PIN 32		  // I2C SDA pin for OLED display
+#define SCL_PIN 33		  // I2C SCL pin for OLED display
 
 #define PHOTORESISTER_THRESHOLD 900
 
-#define LED_PIN 2
+#define LED_PIN 25
 #define NIGHT_LIGHT_ON_DURATION 10 * 60 * 1000
-#define NIGHT_LIGHT_BLOCK_DISPLAY_DURATION 3 * 1000
+#define NIGHT_LIGHT_BLOCK_DISPLAY_DURATION 1 * 1000
 
 #define CHECK_WIFI_DEVICE_CONFIG_INTERVAL 10 * 1000
 
