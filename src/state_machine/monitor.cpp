@@ -4,6 +4,9 @@
 
 Monitor::Monitor(const int width, const int height)
 	: display(width, height, &Wire, -1), state(MONITOR_IDLE), lastBlockTime(0), blockDurationMs(0), ledOn(false) {
+	// Set custom I2C pins (SDA = GPIO32, SCL = GPIO33)
+	Wire.begin(SDA_PIN, SCL_PIN);
+
 	// Initialize the display with the I2C address (for example, 0x3C for many displays)
 	if (!this->display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {	 // Address 0x3D for 128x64
 		Serial.println(F("SSD1306 allocation failed"));
