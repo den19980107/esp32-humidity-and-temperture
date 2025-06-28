@@ -3,7 +3,6 @@
 #include <SPIFFS.h>
 
 #include "define.h"
-#include "esp_sleep.h"
 #include "state_machine/monitor.h"
 
 App::App()
@@ -27,13 +26,6 @@ void App::run() {
 		this->monitorSM.update();
 		this->nightLightSM.update();
 		this->serverSM.update();
-
-		if (this->sensorSM.isIdle() && this->monitorSM.isIdle() && this->nightLightSM.isIdle() &&
-			this->serverSM.isIdle()) {
-			Serial.println("All systems idle, entering sleep mode...");
-			esp_sleep_enable_timer_wakeup(1 * 1000000);	 // Wake up after 1 seconds
-			esp_light_sleep_start();
-		}
 		delay(100);
 	}
 }
