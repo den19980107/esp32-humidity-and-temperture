@@ -34,12 +34,17 @@ ErrorCode App::initialize() {
         LOG_INFO("Configuration loaded successfully");
         LOG_INFOF("Loaded config - WiFi SSID: '%s', MQTT Broker: '%s'", config.wifi.ssid, config.mqtt.broker);
         
-        // Validate loaded configuration - if key values are empty, use defaults
-        if (strlen(config.wifi.ssid) == 0 || strlen(config.mqtt.broker) == 0) {
-            LOG_WARN("Loaded config has empty critical values, applying defaults");
-            config.setDefaults();
-            LOG_INFOF("Applied defaults - WiFi SSID: '%s', MQTT Broker: '%s'", config.wifi.ssid, config.mqtt.broker);
+        // Validate loaded configuration - if key values are empty, use defaults (but keep user's WiFi settings)
+        if (strlen(config.mqtt.broker) == 0) {
+            LOG_WARN("MQTT broker not configured, applying MQTT defaults");
+            // Only reset MQTT settings, preserve WiFi settings
+            strcpy(config.mqtt.broker, "192.168.31.21");
+            strcpy(config.mqtt.username, "user");
+            strcpy(config.mqtt.password, "passwd");
+            strcpy(config.mqtt.edgeId, "24dcc3a736ec");
+            config.mqtt.port = 1883;
             config.saveToFile(CONFIG_FILE);
+            LOG_INFOF("Applied MQTT defaults - WiFi SSID preserved: '%s'", config.wifi.ssid);
         }
     }
     
@@ -313,8 +318,12 @@ void App::updateWiFi() {
         if (wifiManager->isConnecting()) {
             LOG_INFO("[WiFi] Still connecting...");
         } else if (!wifiManager->isConnected()) {
-            LOG_INFOF("[WiFi] Not connected. WiFi Status: %d", WiFi.status());
-            LOG_INFOF("[WiFi] Attempting to connect to: %s", config.wifi.ssid);
+            if (strlen(config.wifi.ssid) == 0) {
+                LOG_INFO("[WiFi] No credentials configured - AP mode active");
+            } else {
+                LOG_INFOF("[WiFi] Not connected. WiFi Status: %d", WiFi.status());
+                LOG_INFOF("[WiFi] Attempting to connect to: %s", config.wifi.ssid);
+            }
         }
         lastStatusPrint = millis();
     }
@@ -322,13 +331,23 @@ void App::updateWiFi() {
     bool currentConnectedState = wifiManager->isConnected();
     if (currentConnectedState != lastConnectedState) {
         if (currentConnectedState) {
-            LOG_INFOF("[WiFi] *** CONNECTED! *** IP: %s", wifiManager->getLocalIP().c_str());
-            LOG_INFOF("[WiFi] Gateway: %s", WiFi.gatewayIP().toString().c_str());
-            LOG_INFOF("[WiFi] DNS: %s", WiFi.dnsIP().toString().c_str());
+            if (wifiManager->isInAPMode()) {
+                LOG_INFOF("[AP Mode] *** ACCESS POINT ACTIVE *** IP: %s", wifiManager->getLocalIP().c_str());
+                LOG_INFO("[AP Mode] Connect to configure WiFi credentials");
+            } else {
+                LOG_INFOF("[WiFi] *** CONNECTED! *** IP: %s", wifiManager->getLocalIP().c_str());
+                LOG_INFOF("[WiFi] Gateway: %s", WiFi.gatewayIP().toString().c_str());
+                LOG_INFOF("[WiFi] DNS: %s", WiFi.dnsIP().toString().c_str());
+            }
+            
             if (!webServerStarted) {
                 webServer->begin();
                 webServerStarted = true;
-                LOG_INFOF("[Web] *** Debug server available at: http://%s ***", wifiManager->getLocalIP().c_str());
+                if (wifiManager->isInAPMode()) {
+                    LOG_INFOF("[Web] *** WiFi Config server at: http://%s ***", wifiManager->getLocalIP().c_str());
+                } else {
+                    LOG_INFOF("[Web] *** Debug server available at: http://%s ***", wifiManager->getLocalIP().c_str());
+                }
             }
         } else {
             LOG_WARN("[WiFi] *** DISCONNECTED ***");
@@ -342,7 +361,8 @@ void App::updateMQTT() {
     static unsigned long lastConnectionAttempt = 0;
     static unsigned long lastStatusPrint = 0;
     
-    if (wifiManager->isConnected()) {
+    // Only attempt MQTT if WiFi is connected to a network (not in AP mode)
+    if (wifiManager->isConnected() && !wifiManager->isInAPMode()) {
         bool currentMqttState = mqttClient->isConnected();
         
         // Print MQTT status every 15 seconds for debugging
@@ -375,7 +395,11 @@ void App::updateMQTT() {
         mqttClient->update();
     } else {
         if (lastMqttConnectedState) {
-            LOG_WARN("[MQTT] WiFi disconnected, stopping MQTT");
+            if (wifiManager->isInAPMode()) {
+                LOG_INFO("[MQTT] WiFi in AP mode, MQTT disabled");
+            } else {
+                LOG_WARN("[MQTT] WiFi disconnected, stopping MQTT");
+            }
             lastMqttConnectedState = false;
         }
     }
@@ -403,12 +427,28 @@ void App::onLedControlMessage(bool ledOn) {
 }
 
 void App::setupWebServer() {
+    // Main page - either WiFi config or status depending on mode
     webServer->on("/", HTTP_GET, [this](AsyncWebServerRequest *request){
+        if (wifiManager->isInAPMode()) {
+            request->send(200, "text/html", getWiFiConfigHTML());
+        } else {
+            request->send(200, "text/html", getStatusHTML());
+        }
+    });
+    
+    // Status page (always available)
+    webServer->on("/status", HTTP_GET, [this](AsyncWebServerRequest *request){
         request->send(200, "text/html", getStatusHTML());
     });
     
-    webServer->on("/status", HTTP_GET, [this](AsyncWebServerRequest *request){
-        request->send(200, "text/html", getStatusHTML());
+    // WiFi configuration submission
+    webServer->on("/configure", HTTP_POST, [this](AsyncWebServerRequest *request){
+        handleWiFiConfig(request);
+    });
+    
+    // WiFi scan endpoint
+    webServer->on("/scan", HTTP_GET, [this](AsyncWebServerRequest *request){
+        request->send(200, "application/json", scanWiFiNetworks());
     });
     
     LOG_INFO("Web server configured (will start when WiFi connects)");
@@ -449,15 +489,24 @@ String App::getStatusHTML() {
     
     // WiFi Status
     html += "<h2>📶 WiFi Status</h2>";
-    if (wifiManager->isConnected()) {
+    if (wifiManager->isInAPMode()) {
+        html += "<div class='status info'>";
+        html += "<strong>Status:</strong> 📡 Access Point Mode<br>";
+        html += "<strong>AP Name:</strong> ESP32-Config-" + WiFi.macAddress().substring(12, 17) + "<br>";
+        html += "<strong>AP IP:</strong> " + wifiManager->getLocalIP() + "<br>";
+        html += "<strong>Connected Clients:</strong> " + String(WiFi.softAPgetStationNum()) + "<br>";
+        html += "<strong>Mode:</strong> Configuration Mode (No WiFi credentials set)";
+    } else if (wifiManager->isConnected()) {
         html += "<div class='status success'>";
-        html += "<strong>Status:</strong> ✅ Connected<br>";
+        html += "<strong>Status:</strong> ✅ Connected to WiFi<br>";
         html += "<strong>SSID:</strong> " + WiFi.SSID() + "<br>";
         html += "<strong>IP Address:</strong> " + wifiManager->getLocalIP() + "<br>";
         html += "<strong>Signal Strength:</strong> " + String(WiFi.RSSI()) + " dBm<br>";
+        html += "<strong>Gateway:</strong> " + WiFi.gatewayIP().toString();
     } else if (wifiManager->isConnecting()) {
         html += "<div class='status warning'>";
-        html += "<strong>Status:</strong> ⏳ Connecting...";
+        html += "<strong>Status:</strong> ⏳ Connecting to WiFi...<br>";
+        html += "<strong>Target SSID:</strong> " + String(config.wifi.ssid);
     } else {
         html += "<div class='status error'>";
         html += "<strong>Status:</strong> ❌ Disconnected<br>";
@@ -467,7 +516,12 @@ String App::getStatusHTML() {
     
     // MQTT Status
     html += "<h2>📡 MQTT Status</h2>";
-    if (mqttClient->isConnected()) {
+    if (wifiManager->isInAPMode()) {
+        html += "<div class='status warning'>";
+        html += "<strong>Status:</strong> ⚠️ Not Available (AP Mode)<br>";
+        html += "<strong>Info:</strong> MQTT requires WiFi connection<br>";
+        html += "<strong>Configure WiFi first to enable MQTT</strong>";
+    } else if (mqttClient->isConnected()) {
         html += "<div class='status success'>";
         html += "<strong>Status:</strong> ✅ Connected<br>";
         html += "<strong>Broker:</strong> " + String(config.mqtt.broker) + ":" + String(config.mqtt.port) + "<br>";
@@ -508,7 +562,12 @@ String App::getStatusHTML() {
     html += "</div>";
     
     html += "<div class='refresh'>";
-    html += "<a href='/' class='btn'>🔄 Refresh Now</a>";
+    if (wifiManager->isInAPMode()) {
+        html += "<a href='/' class='btn' style='background:#28a745;margin-right:10px'>📶 WiFi Configuration</a>";
+        html += "<a href='/status' class='btn'>🔄 Refresh Status</a>";
+    } else {
+        html += "<a href='/status' class='btn'>🔄 Refresh Now</a>";
+    }
     html += "</div>";
     
     html += "<p style='text-align:center;color:#666;font-size:12px'>Auto-refresh every 5 seconds</p>";
@@ -516,4 +575,198 @@ String App::getStatusHTML() {
     html += "</body></html>";
     
     return html;
+}
+
+String App::getWiFiConfigHTML() {
+    String html = R"(
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <title>ESP32 WiFi Configuration</title>
+    <style>
+        body{font-family:Arial,sans-serif;margin:20px;background:#f0f0f0}
+        .container{max-width:400px;margin:0 auto;background:white;padding:20px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1)}
+        h1{color:#333;text-align:center;margin-bottom:30px}
+        .form-group{margin-bottom:15px}
+        label{display:block;margin-bottom:5px;font-weight:bold;color:#555}
+        input,select{width:100%;padding:10px;border:1px solid #ddd;border-radius:5px;box-sizing:border-box}
+        button{width:100%;padding:12px;background:#007bff;color:white;border:none;border-radius:5px;cursor:pointer;font-size:16px}
+        button:hover{background:#0056b3}
+        .scan-btn{background:#28a745;margin-bottom:10px}
+        .scan-btn:hover{background:#1e7e34}
+        .status{text-align:center;margin:10px 0;padding:10px;border-radius:5px}
+        .success{background:#d4edda;border:1px solid #c3e6cb;color:#155724}
+        .info{background:#d1ecf1;border:1px solid #bee5eb;color:#0c5460}
+    </style>
+</head>
+<body>
+    <div class='container'>
+        <h1>📶 WiFi Configuration</h1>
+        
+        <div class='status info'>
+            <strong>ESP32 Access Point Active</strong><br>
+            Configure WiFi credentials to connect to your network
+        </div>
+        
+        <form action='/configure' method='POST'>
+            <div class='form-group'>
+                <button type='button' class='scan-btn' onclick='scanNetworks()'>🔍 Scan WiFi Networks</button>
+                <select id='ssid' name='ssid' onchange='updateSSID()'>
+                    <option value=''>Select a network or enter manually</option>
+                </select>
+            </div>
+            
+            <div class='form-group'>
+                <label for='ssid_manual'>WiFi Network (SSID):</label>
+                <input type='text' id='ssid_manual' name='ssid_manual' placeholder='Enter WiFi network name'>
+            </div>
+            
+            <div class='form-group'>
+                <label for='password'>WiFi Password:</label>
+                <input type='password' id='password' name='password' placeholder='Enter WiFi password'>
+            </div>
+            
+            <button type='submit'>💾 Save and Connect</button>
+        </form>
+        
+        <div style='text-align:center;margin-top:20px'>
+            <a href='/status' style='color:#007bff;text-decoration:none'>📊 View System Status</a>
+        </div>
+    </div>
+    
+    <script>
+        function scanNetworks() {
+            fetch('/scan')
+                .then(response => response.json())
+                .then(data => {
+                    const select = document.getElementById('ssid');
+                    select.innerHTML = '<option value="">Select a network</option>';
+                    data.networks.forEach(network => {
+                        const option = document.createElement('option');
+                        option.value = network.ssid;
+                        option.textContent = network.ssid + ' (' + network.rssi + ' dBm)';
+                        select.appendChild(option);
+                    });
+                })
+                .catch(err => console.error('Scan failed:', err));
+        }
+        
+        function updateSSID() {
+            const select = document.getElementById('ssid');
+            const manual = document.getElementById('ssid_manual');
+            if (select.value) {
+                manual.value = select.value;
+            }
+        }
+        
+        // Auto-scan on page load
+        window.onload = function() {
+            scanNetworks();
+        }
+    </script>
+</body>
+</html>
+)";
+    
+    return html;
+}
+
+String App::scanWiFiNetworks() {
+    String json = "{\"networks\":[";
+    
+    int n = WiFi.scanNetworks();
+    for (int i = 0; i < n; i++) {
+        if (i > 0) json += ",";
+        json += "{";
+        json += "\"ssid\":\"" + WiFi.SSID(i) + "\",";
+        json += "\"rssi\":" + String(WiFi.RSSI(i)) + ",";
+        json += "\"encryption\":" + String(WiFi.encryptionType(i));
+        json += "}";
+    }
+    
+    json += "]}";
+    WiFi.scanDelete(); // Free memory
+    
+    return json;
+}
+
+void App::handleWiFiConfig(AsyncWebServerRequest *request) {
+    String ssid = "";
+    String password = "";
+    
+    // Get SSID from manual input or dropdown
+    if (request->hasParam("ssid_manual", true) && request->getParam("ssid_manual", true)->value().length() > 0) {
+        ssid = request->getParam("ssid_manual", true)->value();
+    } else if (request->hasParam("ssid", true)) {
+        ssid = request->getParam("ssid", true)->value();
+    }
+    
+    if (request->hasParam("password", true)) {
+        password = request->getParam("password", true)->value();
+    }
+    
+    if (ssid.length() > 0) {
+        // Update configuration
+        strncpy(config.wifi.ssid, ssid.c_str(), sizeof(config.wifi.ssid) - 1);
+        strncpy(config.wifi.password, password.c_str(), sizeof(config.wifi.password) - 1);
+        config.wifi.ssid[sizeof(config.wifi.ssid) - 1] = '\0';
+        config.wifi.password[sizeof(config.wifi.password) - 1] = '\0';
+        
+        // Save to file
+        ErrorCode saveResult = config.saveToFile(CONFIG_FILE);
+        
+        if (saveResult == ErrorCode::SUCCESS) {
+            LOG_INFOF("[WiFi Config] New credentials saved successfully - SSID: %s", ssid.c_str());
+            
+            // Force SPIFFS to flush to ensure file is written
+            SPIFFS.end();
+            SPIFFS.begin(true);
+            
+            // Send success response
+            String response = R"(
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <title>WiFi Configuration Saved</title>
+    <style>
+        body{font-family:Arial,sans-serif;margin:20px;background:#f0f0f0;text-align:center}
+        .container{max-width:400px;margin:50px auto;background:white;padding:30px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1)}
+        .success{background:#d4edda;border:1px solid #c3e6cb;color:#155724;padding:15px;border-radius:5px;margin:20px 0}
+    </style>
+    <script>
+        setTimeout(function() {
+            window.location.href = '/status';
+        }, 5000);
+    </script>
+</head>
+<body>
+    <div class='container'>
+        <h1>✅ Configuration Saved!</h1>
+        <div class='success'>
+            WiFi credentials have been saved.<br>
+            The ESP32 will restart and attempt to connect to: <strong>)" + ssid + R"(</strong>
+        </div>
+        <p>Restarting in 5 seconds...</p>
+    </div>
+</body>
+</html>
+)";
+            
+            request->send(200, "text/html", response);
+            
+            // Wait longer to ensure web response is sent and file is written
+            delay(3000);
+            LOG_INFO("[WiFi Config] Restarting ESP32 to apply new WiFi configuration...");
+            ESP.restart();
+        } else {
+            LOG_ERRORF("[WiFi Config] Failed to save configuration, error: %d", (int)saveResult);
+            request->send(500, "text/html", "<h1>Error: Failed to save configuration</h1>");
+        }
+    } else {
+        request->send(400, "text/html", "<h1>Error: SSID is required</h1>");
+    }
 }

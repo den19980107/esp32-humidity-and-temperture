@@ -77,6 +77,9 @@ private:
     ErrorCode publishSensorData(const SensorData& data);
     void setupWebServer();
     String getStatusHTML();
+    String getWiFiConfigHTML();
+    String scanWiFiNetworks();
+    void handleWiFiConfig(AsyncWebServerRequest *request);
 };
 
 #endif

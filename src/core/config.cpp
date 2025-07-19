@@ -61,9 +61,9 @@ bool Config::validate() {
 }
 
 void Config::setDefaults() {
-    // WiFi defaults - matching original working config
-    strcpy(wifi.ssid, "Xiaomi_1B3F");
-    strcpy(wifi.password, "20181015");
+    // WiFi defaults - no hardcoded credentials, must be configured via web UI
+    strcpy(wifi.ssid, "");
+    strcpy(wifi.password, "");
     strcpy(wifi.username, "");
     wifi.isEnterprise = false;
     
