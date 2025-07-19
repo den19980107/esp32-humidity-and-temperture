@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(make build)",
+      "Bash(pio run -e refactored)",
+      "Bash(make:*)",
+      "Bash(pio:*)",
+      "Bash(ls:*)",
+      "Bash(screen /dev/cu.usbserial-0001 115200)",
+      "Bash(python3 -c \"\nimport serial\nimport time\n\ntry:\n    ser = serial.Serial(''/dev/cu.usbserial-0001'', 115200, timeout=1)\n    print(''Monitoring MQTT connection...'')\n    \n    start_time = time.time()\n    while time.time() - start_time < 25:\n        if ser.in_waiting:\n            data = ser.read(ser.in_waiting).decode(''utf-8'', errors=''ignore'')\n            if ''mqtt'' in data.lower() or ''connect'' in data.lower() or ''publish'' in data.lower():\n                print(''*** MQTT INFO ***'')\n            print(data, end='''')\n        time.sleep(0.1)\n    \n    ser.close()\n    \nexcept Exception as e:\n    print(f''Error: {e}'')\n\")",
+      "Bash(python3 -c \"\nimport serial\nimport time\n\ntry:\n    ser = serial.Serial(''/dev/cu.usbserial-0001'', 115200, timeout=1)\n    print(''Monitoring ESP32 MQTT connection attempt...'')\n    \n    start_time = time.time()\n    while time.time() - start_time < 30:\n        if ser.in_waiting:\n            data = ser.read(ser.in_waiting).decode(''utf-8'', errors=''ignore'')\n            if any(keyword in data.lower() for keyword in [''mqtt'', ''connect'', ''publish'', ''discovery'', ''home'', ''assistant'']):\n                print(''*** MQTT/HA INFO ***'')\n            print(data, end='''')\n        time.sleep(0.1)\n    \n    ser.close()\n    \nexcept Exception as e:\n    print(f''Error: {e}'')\n\")",
+      "Bash(python3 -c \"\nimport serial\nimport time\n\ntry:\n    ser = serial.Serial(''/dev/cu.usbserial-0001'', 115200, timeout=1)\n    print(''Monitoring MQTT connection with credentials...'')\n    \n    start_time = time.time()\n    while time.time() - start_time < 35:\n        if ser.in_waiting:\n            data = ser.read(ser.in_waiting).decode(''utf-8'', errors=''ignore'')\n            if any(keyword in data.lower() for keyword in [''mqtt'', ''connect'', ''publish'', ''discovery'', ''home'', ''assistant'', ''success'']):\n                print(''*** MQTT/HA INFO ***'')\n            print(data, end='''')\n        time.sleep(0.1)\n    \n    ser.close()\n    \nexcept Exception as e:\n    print(f''Error: {e}'')\n\")",
+      "Bash(rm -rf \"/Users/den19980107/Documents/PlatformIO/Projects/esp32 humidity and temperture/src/main.cpp\")",
+      "Bash(rm -rf \"/Users/den19980107/Documents/PlatformIO/Projects/esp32 humidity and temperture/src/app\")",
+      "Bash(rm -rf \"/Users/den19980107/Documents/PlatformIO/Projects/esp32 humidity and temperture/src/state_machine\")",
+      "Bash(rm -rf \"/Users/den19980107/Documents/PlatformIO/Projects/esp32 humidity and temperture/src/util\")",
+      "Bash(rm \"/Users/den19980107/Documents/PlatformIO/Projects/esp32 humidity and temperture/src/define.h\")",
+      "Bash(mv:*)",
+      "Bash(python3 -m serial.tools.miniterm /dev/cu.usbserial-0001 115200 --eol LF)",
+      "Bash(stty -f /dev/cu.usbserial-0001 115200 raw -echo)",
+      "Bash(ping:*)",
+      "Bash(mosquitto_sub:*)",
+      "Bash(mosquitto_pub -h 192.168.31.21 -u user -P passwd -t \"test/topic\" -m \"test message\")",
+      "Bash(mosquitto_pub -h 192.168.31.21 -u user -P passwd -t \"Advantech/24dcc3a736ec/led\" -m \"on\")",
+      "Bash(mosquitto_pub:*)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": []
+  }
+}
