@@ -4,3 +4,10 @@
 .vscode/launch.json
 .vscode/ipch
 .cache
+
+# Claude Code settings (local development only)
+.claude/
+
+# Serial logs and temporary files
+serial_log.txt
+*.log
