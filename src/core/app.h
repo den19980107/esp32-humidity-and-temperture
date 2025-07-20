@@ -45,6 +45,7 @@ private:
     bool showingLedStatus;
     unsigned long ledStatusShowTime;
     bool manualLedControl;
+    bool roomWasBright;  // Track if room was bright since last LED activation
     
     // Configuration
     static const char* CONFIG_FILE;
