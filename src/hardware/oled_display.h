@@ -43,6 +43,11 @@ public:
             showSensorData(data.sensorData);
         }
         
+        // Show LED timer countdown in top right if active
+        if (data.showLedTimer && data.ledTimerRemaining > 0) {
+            showLedCountdown(data.ledTimerRemaining);
+        }
+        
         display.display();
         return ErrorCode::SUCCESS;
     }
@@ -112,6 +117,32 @@ private:
         display.print(text);
         
         display.setTextSize(1);  // Reset text size
+    }
+    
+    void showLedCountdown(unsigned long remainingSeconds) {
+        // Calculate minutes and seconds
+        unsigned long minutes = remainingSeconds / 60;
+        unsigned long seconds = remainingSeconds % 60;
+        
+        // Format the countdown string
+        char countdownStr[16];
+        if (minutes > 0) {
+            snprintf(countdownStr, sizeof(countdownStr), "%lum%lus", minutes, seconds);
+        } else {
+            snprintf(countdownStr, sizeof(countdownStr), "%lus", seconds);
+        }
+        
+        // Position in top right corner
+        display.setTextSize(1);
+        int16_t x1, y1;
+        uint16_t w, h;
+        display.getTextBounds(countdownStr, 0, 0, &x1, &y1, &w, &h);
+        
+        int x = width - w - 2;  // 2 pixels from right edge
+        int y = 0;              // Top of screen
+        
+        display.setCursor(x, y);
+        display.print(countdownStr);
     }
 };
 

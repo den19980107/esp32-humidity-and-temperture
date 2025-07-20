@@ -5,7 +5,8 @@ const char* App::CONFIG_FILE = "/config.json";
 App::App() 
     : initialized(false), lastSensorRead(0), lastDisplayUpdate(0), 
       lastMqttPublish(0), ledOnTime(0), ledTimerActive(false),
-      showingLedStatus(false), ledStatusShowTime(0), manualLedControl(false) {
+      showingLedStatus(false), ledStatusShowTime(0), manualLedControl(false),
+      roomWasBright(false) {
 }
 
 App::~App() {
@@ -45,6 +46,13 @@ ErrorCode App::initialize() {
             config.mqtt.port = 1883;
             config.saveToFile(CONFIG_FILE);
             LOG_INFOF("Applied MQTT defaults - WiFi SSID preserved: '%s'", config.wifi.ssid);
+        }
+        
+        // FORCE: Override nightLightDuration to use code default (10 minutes)
+        if (config.sensor.nightLightDuration != 600000) {
+            LOG_WARNF("Forcing nightLightDuration from %lu ms to 600000 ms (10 minutes)", config.sensor.nightLightDuration);
+            config.sensor.nightLightDuration = 600000;
+            config.saveToFile(CONFIG_FILE);
         }
     }
     
@@ -213,6 +221,20 @@ void App::updateDisplay() {
         displayData.showLedStatus = false;
     }
     
+    // Check if we should show LED timer countdown
+    if (ledTimerActive) {
+        unsigned long elapsed = millis() - ledOnTime;
+        if (elapsed < config.sensor.nightLightDuration) {
+            unsigned long remainingMs = config.sensor.nightLightDuration - elapsed;
+            displayData.showLedTimer = true;
+            displayData.ledTimerRemaining = (remainingMs + 999) / 1000;  // Convert to seconds, round up
+        } else {
+            displayData.showLedTimer = false;
+        }
+    } else {
+        displayData.showLedTimer = false;
+    }
+    
     display->show(displayData);
     lastDisplayUpdate = millis();
 }
@@ -223,11 +245,25 @@ void App::updateLedController() {
 }
 
 void App::checkLedTimer() {
-    if (ledTimerActive && millis() - ledOnTime >= config.sensor.nightLightDuration) {
-        ledController->turnOff();
-        ledTimerActive = false;
-        eventBus.publish(Event(EventType::LED_STATUS_CHANGED, false));
-        LOG_INFO("LED timer expired, turning off");
+    static unsigned long lastDebugPrint = 0;
+    
+    if (ledTimerActive) {
+        unsigned long elapsed = millis() - ledOnTime;
+        
+        // Debug print every 2 seconds while timer is active
+        if (millis() - lastDebugPrint > 2000) {
+            LOG_INFOF("LED Timer Check: elapsed=%lu ms, target=%lu ms, remaining=%lu ms", 
+                     elapsed, config.sensor.nightLightDuration, 
+                     config.sensor.nightLightDuration - elapsed);
+            lastDebugPrint = millis();
+        }
+        
+        if (elapsed >= config.sensor.nightLightDuration) {
+            ledController->turnOff();
+            ledTimerActive = false;
+            eventBus.publish(Event(EventType::LED_STATUS_CHANGED, false));
+            LOG_INFOF("*** LED TIMER EXPIRED *** after %lu ms (target: %lu ms), turning off. LED will not turn on again until room becomes bright first.", elapsed, config.sensor.nightLightDuration);
+        }
     }
 }
 
@@ -244,26 +280,48 @@ bool App::shouldPublishMqtt() {
 }
 
 void App::handleLedAutoControl(const SensorData& data) {
+    static unsigned long lastDebugPrint = 0;
+    
+    // Debug state every 5 seconds
+    if (millis() - lastDebugPrint > 5000) {
+        LOG_INFOF("LED Control State: manual=%s, timerActive=%s, ledOn=%s, light=%d, roomWasBright=%s", 
+                 manualLedControl ? "TRUE" : "FALSE",
+                 ledTimerActive ? "TRUE" : "FALSE",
+                 ledController->isOn() ? "TRUE" : "FALSE",
+                 data.photoresisterValue,
+                 roomWasBright ? "TRUE" : "FALSE");
+        lastDebugPrint = millis();
+    }
+    
     // Skip automatic control if manually controlled
     if (manualLedControl) {
         return;
     }
     
-    bool shouldTurnOn = data.photoresisterValue < config.sensor.photoresisterThreshold;
+    bool roomIsBright = data.photoresisterValue >= config.sensor.photoresisterThreshold;
+    bool roomIsDark = data.photoresisterValue < config.sensor.photoresisterThreshold;
     bool currentlyOn = ledController->isOn();
     
+    // Track room brightness state
+    if (roomIsBright) {
+        roomWasBright = true;  // Mark that room has been bright
+    }
+    
     // Always turn off immediately if light is bright enough
-    if (!shouldTurnOn && currentlyOn) {
+    if (roomIsBright && currentlyOn) {
         ledController->turnOff();
         ledTimerActive = false;  // Cancel timer when turning off due to bright light
         eventBus.publish(Event(EventType::LED_STATUS_CHANGED, false));
         LOG_INFOF("Auto-turning LED OFF (room is bright) - Light: %d >= %d", data.photoresisterValue, config.sensor.photoresisterThreshold);
-    } else if (shouldTurnOn && !currentlyOn) {
+    } 
+    // Only turn on if: room is dark AND room was bright since last activation AND LED is not currently on
+    else if (roomIsDark && !currentlyOn && roomWasBright) {
         ledController->turnOn();
         ledOnTime = millis();
         ledTimerActive = true;
+        roomWasBright = false;  // Reset the flag - LED won't turn on again until room is bright again
         eventBus.publish(Event(EventType::LED_STATUS_CHANGED, true));
-        LOG_INFOF("Auto-turning LED ON (dark room detected) - Light: %d < %d", data.photoresisterValue, config.sensor.photoresisterThreshold);
+        LOG_INFOF("Auto-turning LED ON (dark room detected after bright period) - Light: %d < %d, Timer set for %lu ms", data.photoresisterValue, config.sensor.photoresisterThreshold, config.sensor.nightLightDuration);
     }
 }
 
@@ -410,12 +468,12 @@ void App::onLedControlMessage(bool ledOn) {
     this->manualLedControl = true;  // Enable manual control mode
     
     if (ledOn) {
-        // Turn on indefinitely when manually controlled
+        // Turn on when manually controlled (bypasses brightness cycle requirement)
         ledController->turnOn();
         ledOnTime = millis();
         ledTimerActive = true;
-        // Set a very long duration for manual control
         eventBus.publish(Event(EventType::LED_STATUS_CHANGED, true));
+        LOG_INFOF("Manual LED ON from Home Assistant, Timer set for %lu ms", config.sensor.nightLightDuration);
     } else {
         ledController->turnOff();
         ledTimerActive = false;
