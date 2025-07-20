@@ -27,8 +27,11 @@ struct DisplayData {
     bool showLedStatus;
     bool ledStatus;
     unsigned long displayDuration;
+    bool showLedTimer;
+    unsigned long ledTimerRemaining;  // Remaining seconds
     
-    DisplayData() : showLedStatus(false), ledStatus(false), displayDuration(0) {}
+    DisplayData() : showLedStatus(false), ledStatus(false), displayDuration(0), 
+                   showLedTimer(false), ledTimerRemaining(0) {}
 };
 
 enum class ErrorCode {

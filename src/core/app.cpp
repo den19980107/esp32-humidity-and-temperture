@@ -221,6 +221,20 @@ void App::updateDisplay() {
         displayData.showLedStatus = false;
     }
     
+    // Check if we should show LED timer countdown
+    if (ledTimerActive) {
+        unsigned long elapsed = millis() - ledOnTime;
+        if (elapsed < config.sensor.nightLightDuration) {
+            unsigned long remainingMs = config.sensor.nightLightDuration - elapsed;
+            displayData.showLedTimer = true;
+            displayData.ledTimerRemaining = (remainingMs + 999) / 1000;  // Convert to seconds, round up
+        } else {
+            displayData.showLedTimer = false;
+        }
+    } else {
+        displayData.showLedTimer = false;
+    }
+    
     display->show(displayData);
     lastDisplayUpdate = millis();
 }
